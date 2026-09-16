@@ -1,6 +1,6 @@
 # Stock2 아키텍처와 파일 역할
 
-이 문서는 M3 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
+이 문서는 M4 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
 `memory-bank/product-design-document.md`, 개발 순서와 완료 기준은
 `memory-bank/implementation-plan.md`, 실제 완료 내역은 `memory-bank/progress.md`를 기준으로 한다.
 
@@ -78,6 +78,12 @@ adapter의 fixture 계약 테스트에서 실패하며 UI와 계산 계층에는
 어댑터의 모든 메서드는 외부 `AbortSignal`과 적용 timeout signal을 결합하고 이를 Yahoo 요청의 fetch에
 전달한다. Promise 경주만 종료하고 실제 HTTP 요청을 남기는 방식이 아니므로 M4의 회차 건너뛰기와 그룹
 독립성을 구현할 기반이 된다.
+
+### 고정 시각은 완료 시각이 아니라 T0에서 계산한다
+
+수집 엔진은 이전 요청 완료 시각을 다음 회차 기준으로 사용하지 않는다. 각 그룹은 T0와 sequence를 갖고
+`T0 + interval × n`을 예약한다. timeout이나 skip이 발생해도 다음 회차가 밀리지 않으며, 장 재개 때만
+감지 시각을 새 T0로 사용한다.
 
 ## 3. 런타임 파일
 
@@ -239,7 +245,17 @@ DB와 기존 fixture DB 양쪽에서 검증한 뒤 커밋한다.
 M3의 공급원·DB 구현은 모두 `server-only`이며 Next.js 기본 Node.js runtime을 전제로 한다. 브라우저 계층은
 이 파일들을 import할 수 없고 이후 application use case 또는 route handler가 port를 통해 호출한다.
 
-## 11. 변경 시 점검 순서
+## 11. M4 추가 파일 역할
+
+| 파일                                                    | 역할                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/ports/clock-scheduler.ts`                          | 현재 시각과 절대 시각 예약을 외부 런타임에서 분리하는 port               |
+| `src/application/market-data/collection-engine.ts`      | 네 그룹 고정 시각 실행, batch, skip, timeout, 재시도·중단·복구 상태 머신 |
+| `src/infrastructure/polling/system-scheduler.ts`        | Node timer와 Temporal을 연결하는 서버 전용 Clock/Scheduler 구현          |
+| `src/application/market-data/collection-engine.test.ts` | fake clock으로 0~23초 상태 전이와 그룹 독립성을 검증                     |
+| `docs/adr/0004-fixed-time-collection-engine.md`         | 고정 T0, 그룹 격리와 실패·장 재개 정책 결정                              |
+
+## 12. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

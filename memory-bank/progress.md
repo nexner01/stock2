@@ -10,8 +10,9 @@
 | M1 — 프로젝트 기반과 개발 품질 도구 | 완료 | Next.js 모듈형 모놀리스 기반, 품질 도구, SQLite, 테스트와 계층 경계를 구성함                 |
 | M2 — 도메인 모델, 계약과 설정       | 완료 | 값 객체·수집 상태·설정 계약·성과 계산과 분석 기간 정책을 구현함                              |
 | M3 — 데이터 공급원과 영속성         | 완료 | SQLite 저장소·원자적 정상 스냅샷과 Yahoo 서버 어댑터를 구현함                                |
-| M4 — 고정 시각 수집 엔진            | 대기 | 다음 구현 단계                                                                               |
-| M5~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
+| M4 — 고정 시각 수집 엔진            | 완료 | 고정 T0 스케줄, 네 그룹 상태 머신, timeout·재시도·복구를 구현함                              |
+| M5 — 시황, 검색과 종목 상세         | 대기 | 다음 구현 단계                                                                               |
+| M6~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -182,13 +183,48 @@
   방어적 제약이며 실제 정밀 계산은 도메인 Decimal이 담당한다.
 - Next.js는 기본 Node.js runtime을 사용하고 Yahoo 및 better-sqlite3 모듈을 `server-only` 경계 뒤에 둔다.
 
+## M4 — 고정 시각 수집 엔진과 그룹 상태 머신
+
+상태: 완료
+
+### 수행한 작업
+
+- `Clock`과 `Scheduler` port, Node용 system 구현과 fake clock 테스트 구현을 추가했다.
+- 공급원 준비 후 `start()` 시각을 T0로 사용하고 `T0 + interval × n`에서 네 그룹을 독립 실행한다.
+- 실행 중 다음 회차는 해당 그룹만 skip하고, 빈 관심 종목·포트폴리오는 외부 호출 없이 `empty`로 저장한다.
+- 적용 batch size로 요청을 나누고 일부 batch 실패 시 성공 값은 유지한 채 `partial`로 기록한다.
+- scheduler timeout이 실제 `AbortSignal`을 취소하며 최초 실패와 세 번의 재요청이 모두 실패한 그룹만
+  중단한다.
+- 성공 시 연속 실패와 delayed 상태를 초기화하고 그룹별 다시 시도와 전체 초기화를 분리했다.
+- 일반 조회는 자동 상태 머신과 실패 횟수를 변경하지 않으며 장 마감·휴장은 `paused`로 처리한다.
+- 장중 전환 감지 시각을 새 T0로 사용하고 중지 기간을 소급하지 않으며 기존 실패 상태를 보존한다.
+
+### 검증 결과
+
+| 명령            | 결과                                                                                |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `pnpm validate` | 통과: lint, typecheck, Vitest 13개 파일 88개 테스트, 계층·순환 검사 위반 0건        |
+| `pnpm build`    | 통과: Node scheduler는 서버 전용 경계에 유지되고 애플리케이션 상태 머신은 번들 가능 |
+
+fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수동 조회 독립성, 그룹/전체 초기화,
+0·6·12·18초 시작과 23초 중단, 그룹 간 timeout 독립성, 장 재개 T0 재설정을 실제 대기 없이 검증했다.
+
+관련 요구사항: AC-09, AC-12~AC-15, AC-19, AC-21, AC-22, AC-28, AC-29.
+
+### 구현 경로
+
+- 포트: `src/ports/clock-scheduler.ts`
+- 상태 머신: `src/application/market-data/collection-engine.ts`
+- Node scheduler: `src/infrastructure/polling/system-scheduler.ts`
+- 결정론적 테스트: `src/application/market-data/collection-engine.test.ts`
+- 결정 기록: `docs/adr/0004-fixed-time-collection-engine.md`
+
 ## 다음 개발자 참고
 
-1. M4 수집 스케줄러의 T0는 공급원 세션 준비가 끝난 뒤 설정한다. 세션 준비 전 측정의 첫 틱 skip을 회귀
-   테스트로 남긴다.
-2. `Clock`, scheduler와 provider를 port로 주입하고 네 그룹의 실행·실패 카운터를 완전히 분리한다.
-3. M3 repository의 `validationSucceeded`는 모든 batch와 mapper 검증이 끝난 뒤에만 true로 전달한다.
-4. 일반 조회 실패는 자동 조회 실패 횟수나 중단 상태를 변경하지 않아야 한다.
+1. M5 route handler 또는 서버 조립부가 provider 준비를 완료한 뒤에만 수집 엔진 `start()`를 호출한다.
+2. 브라우저는 Yahoo adapter가 아니라 서버 최신 snapshot API만 읽어야 한다.
+3. TanStack Query key를 그룹별로 분리하고 입력·포커스·스크롤을 배경 갱신과 분리한다.
+4. 시각 구현 전 `design_sample` 측정값을 token으로 고정하고 샘플 캡처 표시를 UI에 복사하지 않는다.
 5. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
    PDD/ADR에 근거를 추가한다.
 6. `docs/validation/*.json`은 2026-09-16 단일 환경의 증거이며 SLA가 아니다. M9에서 다시 측정한다.
