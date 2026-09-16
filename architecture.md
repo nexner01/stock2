@@ -1,6 +1,6 @@
 # Stock2 아키텍처와 파일 역할
 
-이 문서는 M2 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
+이 문서는 M3 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
 `memory-bank/product-design-document.md`, 개발 순서와 완료 기준은
 `memory-bank/implementation-plan.md`, 실제 완료 내역은 `memory-bank/progress.md`를 기준으로 한다.
 
@@ -61,30 +61,48 @@ number나 지역 시각 문자열을 추가하면 같은 입력에 대한 재현
 환경 변수는 `src/config`에서만 읽고 보정된 `AppliedConfig`를 계약으로 전달한다. UI나 스케줄러가 별도
 기본값을 가지면 실제 조회 주기와 표시 문구가 달라질 수 있으므로 모든 소비자는 적용 설정만 사용한다.
 
+### 정상 스냅샷은 최신 결과의 플래그가 아니라 별도 복구 자산이다
+
+최신 수집 시도는 실패·부분 성공일 수 있으므로 `latest_collection_results`와 `healthy_snapshots`를
+물리적으로 분리했다. 모든 시도는 기록하되 전체 검증 성공만 정상 스냅샷을 교체한다. M4 이후 수집기가
+실패 payload를 전달해도 저장소 transaction이 마지막 정상 데이터를 보존한다.
+
+### 공급원 타입은 신뢰 경계를 대신하지 않는다
+
+`yahoo-finance2`의 TypeScript 타입을 그대로 도메인 계약으로 사용하지 않는다. 모든 응답은 Zod schema를
+통과한 뒤 명시적 mapper로 Decimal·Temporal 값 객체가 된다. 라이브러리 버전이나 원본 필드가 바뀌면
+adapter의 fixture 계약 테스트에서 실패하며 UI와 계산 계층에는 원본 형태가 전파되지 않는다.
+
+### 취소와 타임아웃은 공급원 호출까지 전달된다
+
+어댑터의 모든 메서드는 외부 `AbortSignal`과 적용 timeout signal을 결합하고 이를 Yahoo 요청의 fetch에
+전달한다. Promise 경주만 종료하고 실제 HTTP 요청을 남기는 방식이 아니므로 M4의 회차 건너뛰기와 그룹
+독립성을 구현할 기반이 된다.
+
 ## 3. 런타임 파일
 
-| 파일                                                  | 역할                                                                           |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `src/app/layout.tsx`                                  | 한국어 문서 메타데이터와 전역 레이아웃을 제공하는 Server Component 루트        |
-| `src/app/page.tsx`                                    | M1 애플리케이션 셸을 렌더링하는 홈 Server Component                            |
-| `src/app/globals.css`                                 | Tailwind 진입점과 초기 다크 테마·포커스·글꼴 기본값                            |
-| `src/components/ui/button.tsx`                        | shadcn/ui 조합 방식을 따르는 저장소 소유 Button primitive                      |
-| `src/lib/utils.ts`                                    | `clsx`와 `tailwind-merge`를 결합한 표현 계층 className 유틸리티                |
-| `src/config/environment.ts`                           | `process.env`를 읽어 raw 입력만 반환하는 유일한 서버 경계                      |
-| `src/config/index.ts`                                 | 검증된 적용 설정 로더를 노출하는 서버 전용 config 공개 API                     |
-| `src/infrastructure/persistence/sqlite/schema.ts`     | 초기 Drizzle SQLite schema. 현재는 migration 상태 확인용 `app_metadata`만 정의 |
-| `src/infrastructure/persistence/sqlite/client.ts`     | lazy SQLite 연결, WAL 설정과 Drizzle client 생성. 브라우저 import 금지         |
-| `src/infrastructure/persistence/sqlite/index.ts`      | SQLite adapter의 공개 API                                                      |
-| `src/infrastructure/providers/yahoo-finance/index.ts` | M3 Yahoo adapter가 들어갈 서버 전용 공개 경계                                  |
-| `src/infrastructure/polling/index.ts`                 | M4 고정 시각 스케줄러 구현이 들어갈 서버 전용 공개 경계                        |
-| `src/infrastructure/logging/index.ts`                 | 민감 필드 redaction을 적용한 Pino 서버 전용 로깅 adapter                       |
-| `src/application/index.ts`                            | 프레임워크 독립 유스케이스의 공개 API 자리                                     |
-| `src/domain/index.ts`                                 | 값 객체·시장 데이터 모델·포트폴리오 순수 계산의 공개 API                       |
-| `src/ports/index.ts`                                  | provider, repository, clock, scheduler interface의 공개 API 자리               |
-| `src/contracts/index.ts`                              | 설정·시장 데이터 Zod DTO와 mapper의 공개 API                                   |
-| `src/features/index.ts`                               | 화면 단위 상호작용 모듈의 공개 API 자리                                        |
-| `src/components/charts/index.ts`                      | 접근 가능한 ECharts wrapper가 들어갈 공용 표현 경계                            |
-| `src/components/data-status/index.ts`                 | loading/partial/delayed/stale/failed/empty 표현 컴포넌트 경계                  |
+| 파일                                                  | 역할                                                                        |
+| ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/app/layout.tsx`                                  | 한국어 문서 메타데이터와 전역 레이아웃을 제공하는 Server Component 루트     |
+| `src/app/page.tsx`                                    | M1 애플리케이션 셸을 렌더링하는 홈 Server Component                         |
+| `src/app/globals.css`                                 | Tailwind 진입점과 초기 다크 테마·포커스·글꼴 기본값                         |
+| `src/components/ui/button.tsx`                        | shadcn/ui 조합 방식을 따르는 저장소 소유 Button primitive                   |
+| `src/lib/utils.ts`                                    | `clsx`와 `tailwind-merge`를 결합한 표현 계층 className 유틸리티             |
+| `src/config/environment.ts`                           | `process.env`를 읽어 raw 입력만 반환하는 유일한 서버 경계                   |
+| `src/config/index.ts`                                 | 검증된 적용 설정 로더를 노출하는 서버 전용 config 공개 API                  |
+| `src/infrastructure/persistence/sqlite/schema.ts`     | 시장 데이터, 수집 run·상태, 최신/정상 snapshot의 Drizzle SQLite schema      |
+| `src/infrastructure/persistence/sqlite/client.ts`     | lazy SQLite 연결, WAL 설정과 Drizzle client 생성. 브라우저 import 금지      |
+| `src/infrastructure/persistence/sqlite/index.ts`      | SQLite adapter의 공개 API                                                   |
+| `src/infrastructure/providers/yahoo-finance/index.ts` | 검증된 Yahoo adapter와 안정된 오류·심볼 API의 서버 전용 공개 경계           |
+| `src/infrastructure/polling/index.ts`                 | M4 고정 시각 스케줄러 구현이 들어갈 서버 전용 공개 경계                     |
+| `src/infrastructure/logging/index.ts`                 | 민감 필드 redaction을 적용한 Pino 서버 전용 로깅 adapter                    |
+| `src/application/index.ts`                            | 프레임워크 독립 유스케이스의 공개 API 자리                                  |
+| `src/domain/index.ts`                                 | 값 객체·시장 데이터 모델·포트폴리오 순수 계산의 공개 API                    |
+| `src/ports/index.ts`                                  | provider와 repository 계약의 공개 API. M4에서 clock/scheduler가 추가될 경계 |
+| `src/contracts/index.ts`                              | 설정·시장 데이터 Zod DTO와 mapper의 공개 API                                |
+| `src/features/index.ts`                               | 화면 단위 상호작용 모듈의 공개 API 자리                                     |
+| `src/components/charts/index.ts`                      | 접근 가능한 ECharts wrapper가 들어갈 공용 표현 경계                         |
+| `src/components/data-status/index.ts`                 | loading/partial/delayed/stale/failed/empty 표현 컴포넌트 경계               |
 
 빈 `index.ts`는 거대 배럴을 만들기 위한 파일이 아니라 미래 구현이 깊은 경로를 노출하지 않도록 공개
 경계를 먼저 고정한 것이다. 실제 export가 생길 때만 해당 모듈의 공개 타입과 함수만 추가한다.
@@ -126,13 +144,14 @@ number나 지역 시각 문자열을 추가하면 같은 입력에 대한 재현
 
 ## 6. 데이터베이스 파일
 
-| 파일                              | 역할                                                         |
-| --------------------------------- | ------------------------------------------------------------ |
-| `drizzle/0000_tan_archangel.sql`  | `app_metadata` 초기 schema를 생성하는 첫 migration           |
-| `drizzle/meta/0000_snapshot.json` | Drizzle이 다음 migration 차이를 계산하는 생성 snapshot       |
-| `drizzle/meta/_journal.json`      | migration 적용 순서를 기록하는 생성 journal                  |
-| `drizzle/.gitkeep`                | migration이 없을 때도 디렉터리 구조를 보존                   |
-| `data/.gitkeep`                   | 로컬 SQLite 디렉터리만 보존. 실제 `.db`, WAL, SHM은 Git 제외 |
+| 파일                                      | 역할                                                         |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| `drizzle/0000_tan_archangel.sql`          | `app_metadata` 초기 schema를 생성하는 첫 migration           |
+| `drizzle/0001_famous_gertrude_yorkes.sql` | M3 시장 데이터·수집 상태·snapshot schema migration           |
+| `drizzle/meta/0000_snapshot.json`         | Drizzle이 다음 migration 차이를 계산하는 생성 snapshot       |
+| `drizzle/meta/_journal.json`              | migration 적용 순서를 기록하는 생성 journal                  |
+| `drizzle/.gitkeep`                        | migration이 없을 때도 디렉터리 구조를 보존                   |
+| `data/.gitkeep`                           | 로컬 SQLite 디렉터리만 보존. 실제 `.db`, WAL, SHM은 Git 제외 |
 
 DB schema를 바꿀 때 generated meta를 직접 수정하지 않고 `pnpm db:generate`를 실행한다. migration은 깨끗한
 DB와 기존 fixture DB 양쪽에서 검증한 뒤 커밋한다.
@@ -147,6 +166,7 @@ DB와 기존 fixture DB 양쪽에서 검증한 뒤 커밋한다.
 | `memory-bank/progress.md`                   | 구현된 경로, 검증 명령·결과, 제약과 다음 개발자 인수인계     |
 | `docs/adr/0001-application-architecture.md` | 모듈형 모놀리스와 Node 서버 경계 결정                        |
 | `docs/adr/0002-market-data-provider.md`     | Yahoo adapter의 조건부 승인, 심볼, 지연과 이용 제한 결정     |
+| `docs/adr/0003-market-data-persistence.md`  | 최신/정상 snapshot 분리와 원자적 교체·정밀 저장 결정         |
 | `docs/provider-capability-matrix.md`        | 시장·심볼·기간/간격·검색·배치의 재현 가능한 조사 결과        |
 | `README.md`                                 | 새 개발자가 그대로 실행할 설치, DB, 서버, 검사와 공급원 명령 |
 | `architecture.md`                           | 현재 파일 지도와 계층을 가로지르는 설계 통찰(이 문서)        |
@@ -191,7 +211,35 @@ DB와 기존 fixture DB 양쪽에서 검증한 뒤 커밋한다.
 공개 API를 제공한다. `src/domain/index.ts`와 `src/contracts/index.ts`는 각 계층이 허용한 타입과 함수만
 노출한다.
 
-## 10. 변경 시 점검 순서
+## 10. M3 추가 파일 역할
+
+| 파일                                                                      | 역할                                                                              |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/domain/market-data/quotes.ts`                                        | quote, 검색 결과, 종목 상세와 환율 관측의 공급원 독립 도메인 모델                 |
+| `src/ports/market-data-provider.ts`                                       | 지수·quote·검색·상세·OHLCV·환율 조회의 애플리케이션 공급원 계약                   |
+| `src/ports/collection-snapshot-repository.ts`                             | 그룹별 수집 결과와 최신/정상 snapshot 저장 계약 및 JSON 값 타입                   |
+| `src/ports/ohlcv-repository.ts`                                           | OHLCV 복합 범위 저장·조회 계약                                                    |
+| `src/infrastructure/persistence/sqlite/schema.ts`                         | instrument, 시계열, snapshot, run, 상태와 분리 저장소의 DB 제약                   |
+| `src/infrastructure/persistence/sqlite/client.ts`                         | schema-aware Drizzle DB를 lazy 생성하고 WAL을 적용하는 Node 경계                  |
+| `src/infrastructure/persistence/sqlite/ohlcv-repository.ts`               | Decimal/UTC 보존, 복합 키 upsert와 기간 정렬 조회 구현                            |
+| `src/infrastructure/persistence/sqlite/collection-snapshot-repository.ts` | run·상태·최신 결과 transaction과 검증 성공 시 정상 snapshot 교체 구현             |
+| `src/infrastructure/providers/yahoo-finance/client.ts`                    | `yahoo-finance2` 호출과 fetch `AbortSignal` 전달을 캡슐화한 서버 client           |
+| `src/infrastructure/providers/yahoo-finance/schemas.ts`                   | quote·chart·search 원본 응답의 Zod 신뢰 경계                                      |
+| `src/infrastructure/providers/yahoo-finance/mapper.ts`                    | 검증된 Yahoo 값을 Decimal·Temporal 도메인 모델로 변환하고 중복 timestamp를 거부   |
+| `src/infrastructure/providers/yahoo-finance/symbol-map.ts`                | 주요 지수, 한국 접미사, 미국 거래소와 USD/KRW 공급원 심볼 매핑                    |
+| `src/infrastructure/providers/yahoo-finance/errors.ts`                    | timeout·429·미지원·미존재·비정상 응답을 안정된 사용자 오류로 분류                 |
+| `src/infrastructure/providers/yahoo-finance/adapter.ts`                   | 공급원 port 구현, timeout signal 결합과 원본 검증·mapping 조정                    |
+| `src/infrastructure/persistence/sqlite/repositories.test.ts`              | clean migration, DB 제약, 복합 upsert와 실패/정상 snapshot 분리 검증              |
+| `src/infrastructure/providers/yahoo-finance/adapter.test.ts`              | 여섯 공급원 메서드, malformed 응답, 중복, timeout과 오류 분류 계약 검증           |
+| `src/infrastructure/providers/yahoo-finance/symbol-map.test.ts`           | 지수·한국·미국·ETF 심볼 양방향 매핑과 미지원 거래소 검증                          |
+| `src/test/fixtures/yahoo/*.json`                                          | 네트워크 없는 Yahoo quote·chart·환율·검색 계약 테스트 원본 fixture                |
+| `src/test/server-only.ts`                                                 | Vitest에서 서버 모듈을 검사하되 실제 Next.js의 client import 차단은 유지하는 stub |
+| `drizzle/0001_famous_gertrude_yorkes.sql`                                 | M1 DB를 M3 schema로 올리는 생성 migration                                         |
+
+M3의 공급원·DB 구현은 모두 `server-only`이며 Next.js 기본 Node.js runtime을 전제로 한다. 브라우저 계층은
+이 파일들을 import할 수 없고 이후 application use case 또는 route handler가 port를 통해 호출한다.
+
+## 11. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

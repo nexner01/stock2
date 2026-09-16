@@ -9,8 +9,9 @@
 | M0 — 개발 전 검증과 결정            | 완료 | Yahoo 공급원 capability, 이용 제한, 심볼, 기간/간격, 배치와 2초 부하를 실측하고 ADR로 결정함 |
 | M1 — 프로젝트 기반과 개발 품질 도구 | 완료 | Next.js 모듈형 모놀리스 기반, 품질 도구, SQLite, 테스트와 계층 경계를 구성함                 |
 | M2 — 도메인 모델, 계약과 설정       | 완료 | 값 객체·수집 상태·설정 계약·성과 계산과 분석 기간 정책을 구현함                              |
-| M3 — 데이터 공급원과 영속성         | 대기 | 다음 구현 단계                                                                               |
-| M4~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
+| M3 — 데이터 공급원과 영속성         | 완료 | SQLite 저장소·원자적 정상 스냅샷과 Yahoo 서버 어댑터를 구현함                                |
+| M4 — 고정 시각 수집 엔진            | 대기 | 다음 구현 단계                                                                               |
+| M5~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -127,15 +128,67 @@
 - `AppliedConfig`의 내부 키는 PDD의 snake case를 유지해 서버 적용값과 클라이언트 계약의 의미 차이를
   없앴다.
 
+## M3 — 데이터 저장소와 Yahoo Finance 어댑터
+
+상태: 완료
+
+### 수행한 작업
+
+- instrument, OHLCV, quote/index snapshot, collection run, group state, 최신 수집 결과와 마지막 정상
+  스냅샷의 SQLite schema를 만들었다.
+- OHLCV 복합 식별자를 unique constraint로 보장하고 음수 값, 비정수 거래량, OHLC 가격 관계와 UTC
+  timestamp를 DB check constraint로 검증했다.
+- 모든 수집 시도·그룹 상태·최신 결과를 한 transaction으로 기록하고, `healthy` 상태에서 전체 검증이
+  성공한 경우에만 별도 정상 스냅샷을 원자적으로 교체하는 repository를 구현했다.
+- OHLCV 저장소는 Decimal 문자열과 UTC ISO 시각을 보존하며 복합 키 충돌 시 같은 레코드를 갱신한다.
+- 지수, quote batch, 검색, 종목 상세, OHLCV와 USD/KRW 환율 조회를 `MarketDataProvider` port로 정의했다.
+- Yahoo 응답은 Zod로 검증한 뒤 도메인 mapper만 통해 값 객체로 변환하도록 했다.
+- KOSPI/KOSDAQ/NASDAQ/S&P 500, 한국 종목 접미사, 미국 거래소, `KRW=X` 매핑을 Yahoo adapter 내부에
+  격리했다.
+- 모든 Yahoo 호출에 `AbortSignal.timeout`을 적용하고 timeout, rate limit, unsupported, not found,
+  malformed response를 안정된 오류 코드와 한국어 메시지로 분류했다.
+- 고정 fixture 계약 테스트에서 필수 필드 누락, 음수 거래량, OHLC 관계 오류, 중복 timestamp와 공급원
+  심볼 불일치를 거부하도록 검증했다. 단위 테스트는 실 네트워크를 호출하지 않는다.
+- `drizzle/0001_famous_gertrude_yorkes.sql` migration을 생성하고 M1 로컬 DB에 적용해 기존 DB 업그레이드
+  경로를 확인했다. seed 데이터는 migration에 포함하지 않았다.
+
+### 검증 결과
+
+| 명령               | 결과                                                                            |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `pnpm db:generate` | 통과: M3의 8개 신규 테이블과 constraint migration 생성                          |
+| `pnpm db:migrate`  | 통과: M1 로컬 SQLite DB에 M3 migration 적용                                     |
+| `pnpm validate`    | 통과: lint, typecheck, Vitest 12개 파일 81개 테스트, 계층·순환 검사 위반 0건    |
+| `pnpm test:e2e`    | 통과: Chrome Playwright 1/1, axe serious/critical 위반 0                        |
+| `pnpm build`       | 통과: 서버 전용 Yahoo/SQLite 모듈이 클라이언트 번들에 노출되지 않고 정적 빌드됨 |
+
+자동 추적 요구사항: PDD FR-04, §8.1~§8.4, AC-01, AC-02, AC-03, AC-08.
+
+### 구현 경로
+
+- 포트: `src/ports/market-data-provider.ts`, `collection-snapshot-repository.ts`, `ohlcv-repository.ts`
+- SQLite schema와 저장소: `src/infrastructure/persistence/sqlite/schema.ts`,
+  `collection-snapshot-repository.ts`, `ohlcv-repository.ts`
+- Yahoo adapter: `src/infrastructure/providers/yahoo-finance/adapter.ts`, `client.ts`, `schemas.ts`,
+  `mapper.ts`, `symbol-map.ts`, `errors.ts`
+- 고정 공급원 fixture: `src/test/fixtures/yahoo/*.json`
+- 결정 기록: `docs/adr/0003-market-data-persistence.md`
+
+### 결정 기록
+
+- 최신 결과와 마지막 정상 결과는 테이블을 분리한다. 실패 또는 검증 실패 payload는 정상 스냅샷에
+  합치지 않는다.
+- Decimal은 SQLite `TEXT`, 시각은 UTC ISO 8601 `TEXT`로 저장한다. DB 관계 check의 `REAL` 변환은
+  방어적 제약이며 실제 정밀 계산은 도메인 Decimal이 담당한다.
+- Next.js는 기본 Node.js runtime을 사용하고 Yahoo 및 better-sqlite3 모듈을 `server-only` 경계 뒤에 둔다.
+
 ## 다음 개발자 참고
 
-1. M3 Yahoo adapter는 반드시 `src/infrastructure/providers/yahoo-finance` 아래 서버 경계에 두고 브라우저에서
-   직접 import하지 않는다.
-2. 공급원 원본 응답은 Zod 검증과 명시적 mapper를 거쳐야 하며 malformed OHLCV를 정상 스냅샷에
-   합치지 않는다.
-3. SQLite에는 OHLCV 복합 unique constraint와 최신 수집/마지막 정상 스냅샷의 분리 저장을 구현한다.
-4. 수집 스케줄러의 T0는 공급원 세션 준비가 끝난 뒤 설정한다. 세션 준비 전 측정의 첫 틱 skip을 회귀
+1. M4 수집 스케줄러의 T0는 공급원 세션 준비가 끝난 뒤 설정한다. 세션 준비 전 측정의 첫 틱 skip을 회귀
    테스트로 남긴다.
+2. `Clock`, scheduler와 provider를 port로 주입하고 네 그룹의 실행·실패 카운터를 완전히 분리한다.
+3. M3 repository의 `validationSucceeded`는 모든 batch와 mapper 검증이 끝난 뒤에만 true로 전달한다.
+4. 일반 조회 실패는 자동 조회 실패 횟수나 중단 상태를 변경하지 않아야 한다.
 5. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
    PDD/ADR에 근거를 추가한다.
 6. `docs/validation/*.json`은 2026-09-16 단일 환경의 증거이며 SLA가 아니다. M9에서 다시 측정한다.

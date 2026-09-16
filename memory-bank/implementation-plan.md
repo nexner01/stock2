@@ -157,22 +157,22 @@ PDD §13의 미확정 사항을 실제 구현 전에 검증해 잘못된 공급�
 
 ### 7.1 SQLite 저장소
 
-- [ ] instrument, OHLCV, quote/index snapshot, collection run, group state schema를 만든다.
-- [ ] OHLCV 복합 unique constraint와 음수 거래량/가격 관계 검증을 적용한다.
-- [ ] 최신 수집 결과와 마지막 정상 스냅샷 저장 위치를 분리한다.
-- [ ] 검증 완료 후에만 정상 스냅샷을 원자적으로 교체한다.
-- [ ] 실패 결과가 정상 스냅샷과 합쳐지지 않는 repository test를 작성한다.
-- [ ] schema 변경을 migration으로 관리하고 초기 seed는 테스트 fixture와 분리한다.
+- [x] instrument, OHLCV, quote/index snapshot, collection run, group state schema를 만든다.
+- [x] OHLCV 복합 unique constraint와 음수 거래량/가격 관계 검증을 적용한다.
+- [x] 최신 수집 결과와 마지막 정상 스냅샷 저장 위치를 분리한다.
+- [x] 검증 완료 후에만 정상 스냅샷을 원자적으로 교체한다.
+- [x] 실패 결과가 정상 스냅샷과 합쳐지지 않는 repository test를 작성한다.
+- [x] schema 변경을 migration으로 관리하고 초기 seed는 테스트 fixture와 분리한다.
 
 ### 7.2 공급원 어댑터
 
-- [ ] provider port에 지수, quote batch, 검색, 종목 상세, OHLCV와 환율 조회를 정의한다.
-- [ ] Yahoo 원본 응답 Zod schema와 도메인 mapper를 구현한다.
-- [ ] 공급원 심볼 매핑 테이블을 어댑터 안에 격리한다.
-- [ ] 요청마다 `AbortSignal` 기반 적용 타임아웃을 사용한다.
-- [ ] 공급원 오류를 timeout, rate limit, unsupported, not found, malformed response로 분류한다.
-- [ ] 중복 타임스탬프, 필수 필드 누락, 음수 거래량과 OHLC 관계 오류를 거부한다.
-- [ ] fixture 기반 계약 테스트를 작성하고 단위 테스트가 실 네트워크에 의존하지 않게 한다.
+- [x] provider port에 지수, quote batch, 검색, 종목 상세, OHLCV와 환율 조회를 정의한다.
+- [x] Yahoo 원본 응답 Zod schema와 도메인 mapper를 구현한다.
+- [x] 공급원 심볼 매핑 테이블을 어댑터 안에 격리한다.
+- [x] 요청마다 `AbortSignal` 기반 적용 타임아웃을 사용한다.
+- [x] 공급원 오류를 timeout, rate limit, unsupported, not found, malformed response로 분류한다.
+- [x] 중복 타임스탬프, 필수 필드 누락, 음수 거래량과 OHLC 관계 오류를 거부한다.
+- [x] fixture 기반 계약 테스트를 작성하고 단위 테스트가 실 네트워크에 의존하지 않게 한다.
 
 ### 완료 기준
 

@@ -1,0 +1,18 @@
+[
+  {
+    "symbol": "AAPL",
+    "shortName": "Apple Inc.",
+    "longName": "Apple Inc.",
+    "quoteType": "EQUITY",
+    "currency": "USD",
+    "exchange": "NMS",
+    "fullExchangeName": "NasdaqGS",
+    "exchangeTimezoneName": "America/New_York",
+    "marketState": "REGULAR",
+    "regularMarketPrice": 231.45,
+    "regularMarketPreviousClose": 229.1,
+    "regularMarketChangePercent": 1.025753,
+    "regularMarketTime": "2026-09-15T20:00:00Z",
+    "firstTradeDateMilliseconds": "1980-12-12T14:30:00Z"
+  }
+]

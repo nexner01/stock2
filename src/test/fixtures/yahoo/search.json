@@ -1,0 +1,22 @@
+{
+  "quotes": [
+    {
+      "symbol": "AAPL",
+      "isYahooFinance": true,
+      "exchange": "NMS",
+      "shortname": "Apple Inc.",
+      "quoteType": "EQUITY"
+    },
+    {
+      "symbol": "AAPL260918C00230000",
+      "isYahooFinance": true,
+      "exchange": "OPR",
+      "shortname": "AAPL Sep 2026 call",
+      "quoteType": "OPTION"
+    },
+    {
+      "isYahooFinance": false,
+      "name": "Apple Operations International"
+    }
+  ]
+}

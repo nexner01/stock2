@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "symbol": "KRW=X",
+    "currency": "KRW",
+    "exchangeName": "CCY",
+    "regularMarketTime": "2026-09-15T21:59:00Z"
+  },
+  "quotes": [
+    {
+      "date": "2026-09-15T00:00:00Z",
+      "open": 1382.1,
+      "high": 1385.4,
+      "low": 1379.8,
+      "close": 1383.2,
+      "adjclose": 1383.2,
+      "volume": 0
+    }
+  ]
+}

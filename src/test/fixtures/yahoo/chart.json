@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "symbol": "AAPL",
+    "currency": "USD",
+    "exchangeName": "NMS",
+    "regularMarketTime": "2026-09-15T20:00:00Z"
+  },
+  "quotes": [
+    {
+      "date": "2026-09-12T20:00:00Z",
+      "open": 225.1,
+      "high": 230.2,
+      "low": 224.8,
+      "close": 229.1,
+      "adjclose": 228.9,
+      "volume": 50123456
+    },
+    {
+      "date": "2026-09-15T20:00:00Z",
+      "open": 229.5,
+      "high": 232.1,
+      "low": 228.7,
+      "close": 231.45,
+      "adjclose": 231.45,
+      "volume": 48901234
+    }
+  ]
+}

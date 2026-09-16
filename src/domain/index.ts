@@ -16,6 +16,7 @@ export {
   type DecimalKind,
   type Money,
 } from "./numbers";
+export { parsePlainDate, parseUtcInstant } from "./time";
 export { createOhlcv, ohlcvIdentityKey, type Ohlcv, type OhlcvInput } from "./market-data/ohlcv";
 export type {
   BatchResult,
@@ -26,6 +27,13 @@ export type {
   GroupStatus,
   HealthySnapshot,
 } from "./market-data/collection";
+export type {
+  ExchangeRateObservation,
+  InstrumentDetails,
+  InstrumentKind,
+  InstrumentSearchResult,
+  QuoteSnapshot,
+} from "./market-data/quotes";
 export {
   calculateCagr,
   calculateCumulativeReturn,
