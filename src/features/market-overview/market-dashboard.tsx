@@ -3,12 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import Decimal from "decimal.js";
 import { BarChart3, CandlestickChart, ChevronRight, LineChart, Search, Star } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { MarketChart } from "@/components/charts/market-chart";
 import { StatusBadge } from "@/components/data-status/status-badge";
 import { Panel } from "@/components/panel";
+import { canAdd, LocalUserDataRepository } from "@/composition/browser-user-data";
 import {
   instrumentDetailDtoSchema,
   instrumentSearchDtoSchema,
@@ -223,6 +224,7 @@ export function MarketDashboard() {
               onPeriod={setPeriod}
               onChartType={setChartType}
               onRetry={() => void detail.refetch()}
+              watchlistLimit={overview.data?.limits.watchlistMaxSymbols}
             />
             <PopularTable data={popular} onSelect={selectInstrument} />
           </div>
@@ -296,6 +298,7 @@ function InstrumentPanel({
   onPeriod,
   onChartType,
   onRetry,
+  watchlistLimit,
 }: Readonly<{
   detail: InstrumentDetailDto | undefined;
   isPending: boolean;
@@ -305,6 +308,7 @@ function InstrumentPanel({
   onPeriod(value: Period): void;
   onChartType(value: "line" | "candle"): void;
   onRetry(): void;
+  watchlistLimit: number | undefined;
 }>) {
   return (
     <Panel className="chart-panel">
@@ -323,6 +327,7 @@ function InstrumentPanel({
               <p>
                 {detail.quote.exchange} · {detail.quote.currency}
               </p>
+              <WatchlistButton detail={detail} limit={watchlistLimit} />
             </div>
             <div className="instrument-price">
               <strong>{formatPrice(detail.quote.price, detail.quote.currency)}</strong>
@@ -366,6 +371,67 @@ function InstrumentPanel({
         </>
       ) : null}
     </Panel>
+  );
+}
+
+function WatchlistButton({
+  detail,
+  limit,
+}: Readonly<{ detail: InstrumentDetailDto; limit: number | undefined }>) {
+  const [included, setIncluded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      const data = new LocalUserDataRepository(localStorage).load();
+      setIncluded(
+        data.watchlist.some(
+          (item) => item.symbol === detail.quote.symbol && item.exchange === detail.quote.exchange,
+        ),
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, [detail.quote.exchange, detail.quote.symbol]);
+
+  function toggle() {
+    const repository = new LocalUserDataRepository(localStorage);
+    const data = repository.load();
+    if (included) {
+      repository.save({
+        ...data,
+        watchlist: data.watchlist.filter(
+          (item) => item.symbol !== detail.quote.symbol || item.exchange !== detail.quote.exchange,
+        ),
+      });
+      setIncluded(false);
+      return;
+    }
+    if (!limit || !canAdd(data.watchlist.length, limit)) return;
+    if (
+      !data.watchlist.length &&
+      !data.portfolios.length &&
+      !window.confirm(
+        "관심 종목은 이 브라우저 기기에만 저장됩니다. 브라우저 데이터 삭제 시 복구할 수 없습니다. 저장할까요?",
+      )
+    )
+      return;
+    repository.save({
+      ...data,
+      watchlist: [
+        ...data.watchlist,
+        { symbol: detail.quote.symbol, exchange: detail.quote.exchange, name: detail.quote.name },
+      ],
+    });
+    setIncluded(true);
+  }
+
+  return (
+    <button className="watchlist-action" type="button" aria-pressed={included} onClick={toggle}>
+      <Star size={14} fill={included ? "currentColor" : "none"} />
+      {included ? "관심 종목 제거" : "관심 종목 추가"}
+    </button>
   );
 }
 

@@ -283,7 +283,21 @@ M5에서 `composition`을 명시적으로 둔 이유는 route handler가 구체 
 기간과 차트 유형은 컴포넌트 로컬 상태로 남는다. 금액·비율은 계약에서 문자열로 유지하고 표시 경계에서만
 Decimal로 해석한다. ECharts에 전달할 때만 시각화 라이브러리 요구 형식인 number로 변환한다.
 
-## 13. 변경 시 점검 순서
+## 13. M6 추가 파일 역할과 통찰
+
+| 파일                                                                   | 역할                                                          |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `src/ports/user-data-repository.ts`                                    | 관심 종목·포트폴리오의 브라우저 저장 계약과 직렬화 타입       |
+| `src/infrastructure/persistence/browser/local-user-data-repository.ts` | version 검증, legacy migration, 손상 복구와 중복 제거 adapter |
+| `src/composition/browser-user-data.ts`                                 | client feature와 구체 browser adapter 사이의 조립 경계        |
+| `src/app/api/market/fx/route.ts`                                       | USD/KRW 관측을 Decimal 문자열 DTO로 제공하는 서버 경계        |
+| `src/features/portfolio-analysis/portfolio-dashboard.tsx`              | 저장 수량과 서버 가격·환율을 결합하는 현재 평가 화면          |
+
+localStorage에는 식별자·표시명·수량만 저장한다. 가격, 환율, 평가금액과 공급원 payload는 화면 진입 때
+서버 query로 합성하므로 오래된 시장값이 사용자 데이터처럼 영속되지 않는다. 적용 한도는 삭제 정책이
+아니라 신규 쓰기 정책이라서 설정 축소가 기존 사용자 데이터를 자동 삭제하지 않는다.
+
+## 14. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

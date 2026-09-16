@@ -12,7 +12,8 @@
 | M3 — 데이터 공급원과 영속성         | 완료 | SQLite 저장소·원자적 정상 스냅샷과 Yahoo 서버 어댑터를 구현함                                |
 | M4 — 고정 시각 수집 엔진            | 완료 | 고정 T0 스케줄, 네 그룹 상태 머신, timeout·재시도·복구를 구현함                              |
 | M5 — 시황, 검색과 종목 상세         | 완료 | API 계약, 반응형 시장 화면, ECharts, 부분 갱신, E2E·시각 QA                                  |
-| M6~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
+| M6 — 관심 종목·포트폴리오           | 완료 | versioned localStorage, 관심 종목, 원화 평가, 저장·삭제 확인, E2E·시각 QA                    |
+| M7~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -256,6 +257,36 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 - API/계약: `src/app/api/market/**`, `src/contracts/market-overview.ts`
 - 조립: `src/composition/market-runtime.ts`, `src/infrastructure/runtime/market-runtime.ts`
 - 검증: `src/features/market-overview/market-dashboard.test.tsx`, `tests/e2e/smoke.spec.ts`, `design-qa.md`
+
+## M6 — 관심 종목과 사용자 포트폴리오
+
+상태: 완료
+
+### 수행한 작업
+
+- 관심 종목과 여러 포트폴리오의 version 1 Zod schema와 localStorage repository를 만들고 legacy migration,
+  손상 데이터 빈 상태 복구와 거래소+티커 중복 제거를 구현했다.
+- 서버 적용 한도를 overview 계약으로 전달한다. 설정 축소 시 기존 데이터는 유지하고 신규 추가만 막는다.
+- 종목 상세에서 관심 종목 추가/제거를 제공하며 최초 저장 전에 기기 한정·복구 불가 가능성을 확인한다.
+- 양수 Decimal 수량과 중복을 검증하고 최신 가격·USD/KRW 환율로 원화 평가금액·전체 금액·비중을 계산한다.
+- 전체 초기화는 확인 후에만 수행하며 취소 시 저장 데이터와 UI를 변경하지 않는다.
+
+### 검증 결과
+
+| 명령            | 결과                                                             |
+| --------------- | ---------------------------------------------------------------- |
+| `pnpm validate` | 통과: Vitest 15개 파일 96개 테스트, 계층·순환 위반 0건           |
+| `pnpm test:e2e` | 통과 2/2: 관심 종목, 저장·복원, 삭제 취소, axe 중대 위반 0건     |
+| `pnpm build`    | 통과: `/portfolio`, `/api/market/fx` 포함                        |
+| 시각 QA         | `docs/validation/m6-portfolio.png`, `design-qa.md` 결과 `passed` |
+
+관련 요구사항: AC-11, AC-16, AC-20, AC-25, AC-27.
+
+### 구현 경로
+
+- 저장 계약/adapter: `src/ports/user-data-repository.ts`, `src/infrastructure/persistence/browser/local-user-data-repository.ts`
+- 포트폴리오 UI: `src/app/portfolio/page.tsx`, `src/features/portfolio-analysis/portfolio-dashboard.tsx`
+- 환율 API: `src/app/api/market/fx/route.ts`
 
 ## 다음 개발자 참고
 

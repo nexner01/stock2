@@ -28,6 +28,7 @@ const quote = {
 function overview() {
   return {
     pollIntervalSeconds: 2,
+    limits: { watchlistMaxSymbols: 20, portfolioMaxSymbols: 10 },
     groups: [
       {
         id: "indices",

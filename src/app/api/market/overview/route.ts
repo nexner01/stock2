@@ -12,6 +12,10 @@ export async function GET() {
     await ensureMarketRuntime();
     return NextResponse.json({
       pollIntervalSeconds: marketRuntime.config.realtime.poll_interval_seconds,
+      limits: {
+        watchlistMaxSymbols: marketRuntime.config.limits.watchlist_max_symbols,
+        portfolioMaxSymbols: marketRuntime.config.limits.portfolio_max_symbols,
+      },
       groups: groupIds.map((id) => {
         const state = marketRuntime.engine.state(id);
         return {

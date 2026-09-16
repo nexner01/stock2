@@ -34,7 +34,19 @@ export const marketGroupDtoSchema = z.object({
 
 export const marketOverviewDtoSchema = z.object({
   pollIntervalSeconds: z.number().int().min(2),
+  limits: z.object({
+    watchlistMaxSymbols: z.number().int().positive(),
+    portfolioMaxSymbols: z.number().int().positive(),
+  }),
   groups: z.array(marketGroupDtoSchema),
+});
+
+export const exchangeRateDtoSchema = z.object({
+  base: z.literal("USD"),
+  quote: z.literal("KRW"),
+  rate: decimalStringSchema,
+  marketTimestamp: utcIsoInstantSchema,
+  collectedAt: utcIsoInstantSchema,
 });
 
 export const instrumentDetailDtoSchema = z.object({
@@ -70,3 +82,4 @@ export const instrumentSearchDtoSchema = z.array(
 export type MarketOverviewDto = z.infer<typeof marketOverviewDtoSchema>;
 export type InstrumentDetailDto = z.infer<typeof instrumentDetailDtoSchema>;
 export type InstrumentSearchDto = z.infer<typeof instrumentSearchDtoSchema>;
+export type ExchangeRateDto = z.infer<typeof exchangeRateDtoSchema>;
