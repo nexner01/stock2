@@ -1,0 +1,466 @@
+{
+  "kind": "provider-probe",
+  "provider": "Yahoo Finance via yahoo-finance2 4.0.2",
+  "executedAt": "2026-09-16T04:48:32.453Z",
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "win32"
+  },
+  "summary": {
+    "total": 24,
+    "passed": 23,
+    "expectedUnsupported": 1,
+    "unexpectedFailures": 0
+  },
+  "results": [
+    {
+      "name": "symbols:indices",
+      "ok": true,
+      "durationMs": 1593.61,
+      "details": {
+        "requested": 4,
+        "returned": 4,
+        "symbols": [
+          {
+            "symbol": "^KS11",
+            "exchange": "KSE",
+            "currency": "KRW",
+            "quoteType": "INDEX"
+          },
+          {
+            "symbol": "^KQ11",
+            "exchange": "KOSDAQ",
+            "currency": "KRW",
+            "quoteType": "INDEX"
+          },
+          {
+            "symbol": "^IXIC",
+            "exchange": "Nasdaq GIDS",
+            "currency": "USD",
+            "quoteType": "INDEX"
+          },
+          {
+            "symbol": "^GSPC",
+            "exchange": "SNP",
+            "currency": "USD",
+            "quoteType": "INDEX"
+          }
+        ]
+      }
+    },
+    {
+      "name": "symbols:recommendations",
+      "ok": true,
+      "durationMs": 288.35,
+      "details": {
+        "requested": 9,
+        "returned": 9,
+        "symbols": [
+          {
+            "symbol": "VTI",
+            "exchange": "NYSEArca",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "BND",
+            "exchange": "NasdaqGM",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "MTUM",
+            "exchange": "Cboe US",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "TLT",
+            "exchange": "NasdaqGM",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "IEF",
+            "exchange": "NasdaqGM",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "DBC",
+            "exchange": "NYSEArca",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "GLD",
+            "exchange": "NYSEArca",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "IJS",
+            "exchange": "NYSEArca",
+            "currency": "USD",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "SHY",
+            "exchange": "NasdaqGM",
+            "currency": "USD",
+            "quoteType": "ETF"
+          }
+        ]
+      }
+    },
+    {
+      "name": "symbols:fx",
+      "ok": true,
+      "durationMs": 162.58,
+      "details": {
+        "requested": 1,
+        "returned": 1,
+        "symbols": [
+          {
+            "symbol": "KRW=X",
+            "exchange": "CCY",
+            "currency": "KRW",
+            "quoteType": "CURRENCY"
+          }
+        ]
+      }
+    },
+    {
+      "name": "chart:AAPL:1h:1m",
+      "ok": true,
+      "durationMs": 435.58,
+      "details": {
+        "count": 959,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2026-09-15T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 959
+      }
+    },
+    {
+      "name": "chart:AAPL:1d:1m",
+      "ok": true,
+      "durationMs": 415.27,
+      "details": {
+        "count": 2878,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2026-09-11T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 2878
+      }
+    },
+    {
+      "name": "chart:AAPL:1w:5m",
+      "ok": true,
+      "durationMs": 184.24,
+      "details": {
+        "count": 961,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2026-09-09T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 961
+      }
+    },
+    {
+      "name": "chart:AAPL:1mo:15m",
+      "ok": true,
+      "durationMs": 326.96,
+      "details": {
+        "count": 1345,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2026-08-17T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 1345
+      }
+    },
+    {
+      "name": "chart:AAPL:6mo:1h",
+      "ok": true,
+      "durationMs": 305.5,
+      "details": {
+        "count": 2142,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2026-03-17T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 2142
+      }
+    },
+    {
+      "name": "chart:AAPL:1y:1h",
+      "ok": true,
+      "durationMs": 379.35,
+      "details": {
+        "count": 4152,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2025-09-15T08:00:00.000Z",
+        "last": "2026-09-15T23:59:54.000Z",
+        "adjustedCloseCount": 4152
+      }
+    },
+    {
+      "name": "chart:AAPL:10y:1d",
+      "ok": true,
+      "durationMs": 384.12,
+      "details": {
+        "count": 2513,
+        "currency": "USD",
+        "exchange": "NMS",
+        "timezone": "America/New_York",
+        "first": "2016-09-15T13:30:00.000Z",
+        "last": "2026-09-15T13:30:00.000Z",
+        "adjustedCloseCount": 2513
+      }
+    },
+    {
+      "name": "chart:005930.KS:1h:1m",
+      "ok": true,
+      "durationMs": 173.98,
+      "details": {
+        "count": 362,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2026-09-15T04:49:00.000Z",
+        "last": "2026-09-16T04:28:27.000Z",
+        "adjustedCloseCount": 362
+      }
+    },
+    {
+      "name": "chart:005930.KS:1d:1m",
+      "ok": true,
+      "durationMs": 174.26,
+      "details": {
+        "count": 1125,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2026-09-11T04:49:00.000Z",
+        "last": "2026-09-16T04:28:27.000Z",
+        "adjustedCloseCount": 1125
+      }
+    },
+    {
+      "name": "chart:005930.KS:1w:5m",
+      "ok": true,
+      "durationMs": 176.9,
+      "details": {
+        "count": 385,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2026-09-09T04:45:00.000Z",
+        "last": "2026-09-16T04:28:27.000Z",
+        "adjustedCloseCount": 385
+      }
+    },
+    {
+      "name": "chart:005930.KS:1mo:15m",
+      "ok": true,
+      "durationMs": 188.61,
+      "details": {
+        "count": 586,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2026-08-18T00:00:00.000Z",
+        "last": "2026-09-16T04:28:28.000Z",
+        "adjustedCloseCount": 586
+      }
+    },
+    {
+      "name": "chart:005930.KS:6mo:1h",
+      "ok": true,
+      "durationMs": 190.41,
+      "details": {
+        "count": 870,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2026-03-17T04:00:00.000Z",
+        "last": "2026-09-16T04:28:27.000Z",
+        "adjustedCloseCount": 870
+      }
+    },
+    {
+      "name": "chart:005930.KS:1y:1h",
+      "ok": true,
+      "durationMs": 253.81,
+      "details": {
+        "count": 1696,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2025-09-15T04:00:00.000Z",
+        "last": "2026-09-16T04:28:28.000Z",
+        "adjustedCloseCount": 1696
+      }
+    },
+    {
+      "name": "chart:005930.KS:10y:1d",
+      "ok": true,
+      "durationMs": 325.31,
+      "details": {
+        "count": 2448,
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "first": "2016-09-19T00:00:00.000Z",
+        "last": "2026-09-16T00:00:00.000Z",
+        "adjustedCloseCount": 2448
+      }
+    },
+    {
+      "name": "search:삼성전자",
+      "ok": false,
+      "expectedFailure": true,
+      "durationMs": 349.13,
+      "error": "Invalid Search Query"
+    },
+    {
+      "name": "search:Samsung Electronics",
+      "ok": true,
+      "durationMs": 386.01,
+      "details": {
+        "returned": 7,
+        "quotes": [
+          {
+            "symbol": "005930.KS",
+            "exchange": "KSC",
+            "name": "SamsungElec",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "SSNLF",
+            "exchange": "PNK",
+            "name": "SAMSUNG ELECTRONICS CO",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "SMSN.IL",
+            "exchange": "IOB",
+            "name": "SAMSUNG ELECTRONICS CO LTD (ATT",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "005935.KS",
+            "exchange": "KSC",
+            "name": "SamsungElec(1P)",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "SSUN.F",
+            "exchange": "FRA",
+            "name": "SAMSUNG ELECTRONICS CO. LTD.  R",
+            "quoteType": "EQUITY"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search:005930",
+      "ok": true,
+      "durationMs": 362.51,
+      "details": {
+        "returned": 2,
+        "quotes": [
+          {
+            "symbol": "005930.KS",
+            "exchange": "KSC",
+            "name": "SamsungElec",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "005930-USD",
+            "exchange": "CCC",
+            "name": "Samsung Electronics Co Ltd (Derivatives) USD",
+            "quoteType": "CRYPTOCURRENCY"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search:AAPL",
+      "ok": true,
+      "durationMs": 399.06,
+      "details": {
+        "returned": 7,
+        "quotes": [
+          {
+            "symbol": "AAPL",
+            "exchange": "NMS",
+            "name": "Apple Inc.",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "AAPU",
+            "exchange": "NGM",
+            "name": "Direxion Daily AAPL Bull 2X ETF",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "AAPW",
+            "exchange": "BTS",
+            "name": "Roundhill AAPL WeeklyPay ETF",
+            "quoteType": "ETF"
+          },
+          {
+            "symbol": "AAPL.TO",
+            "exchange": "TOR",
+            "name": "APPLE CDR (CAD HEDGED)",
+            "quoteType": "EQUITY"
+          },
+          {
+            "symbol": "AAPD",
+            "exchange": "NGM",
+            "name": "Direxion Daily AAPL Bear 1X ETF",
+            "quoteType": "ETF"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quote-batch:4",
+      "ok": true,
+      "durationMs": 295.57,
+      "details": {
+        "requested": 4,
+        "returned": 4
+      }
+    },
+    {
+      "name": "quote-batch:10",
+      "ok": true,
+      "durationMs": 192.55,
+      "details": {
+        "requested": 10,
+        "returned": 10
+      }
+    },
+    {
+      "name": "quote-batch:20",
+      "ok": true,
+      "durationMs": 380.82,
+      "details": {
+        "requested": 20,
+        "returned": 20
+      }
+    }
+  ]
+}

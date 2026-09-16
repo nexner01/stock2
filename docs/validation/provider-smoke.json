@@ -1,0 +1,58 @@
+{
+  "kind": "provider-smoke",
+  "provider": "Yahoo Finance via yahoo-finance2 4.0.2",
+  "startedAt": "2026-09-16T04:50:27.775Z",
+  "finishedAt": "2026-09-16T04:51:25.955Z",
+  "configuration": {
+    "durationSeconds": 60,
+    "intervalMs": 2000,
+    "timeoutMs": 5000,
+    "fixedTick": true,
+    "providerSessionWarmup": true,
+    "warmupDurationMs": 1490.93
+  },
+  "passCriteria": "all groups have zero failures, delayed requests, skipped ticks, and HTTP 429 responses",
+  "passed": true,
+  "groups": {
+    "indices": {
+      "attempts": 30,
+      "successes": 30,
+      "failures": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "averageMs": 185.98,
+      "p95Ms": 209.22
+    },
+    "popular": {
+      "attempts": 30,
+      "successes": 30,
+      "failures": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "averageMs": 199.13,
+      "p95Ms": 288.12
+    },
+    "watchlist": {
+      "attempts": 30,
+      "successes": 30,
+      "failures": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "averageMs": 226.39,
+      "p95Ms": 374.58
+    },
+    "portfolio": {
+      "attempts": 30,
+      "successes": 30,
+      "failures": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "averageMs": 218.84,
+      "p95Ms": 301.82
+    }
+  }
+}
