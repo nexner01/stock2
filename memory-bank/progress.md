@@ -13,7 +13,8 @@
 | M4 — 고정 시각 수집 엔진            | 완료 | 고정 T0 스케줄, 네 그룹 상태 머신, timeout·재시도·복구를 구현함                              |
 | M5 — 시황, 검색과 종목 상세         | 완료 | API 계약, 반응형 시장 화면, ECharts, 부분 갱신, E2E·시각 QA                                  |
 | M6 — 관심 종목·포트폴리오           | 완료 | versioned localStorage, 관심 종목, 원화 평가, 저장·삭제 확인, E2E·시각 QA                    |
-| M7~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
+| M7 — 과거 추정 가치·추천 백테스트   | 완료 | 공통 시작일, 과거 환율, 4개 추천안, 월별 리밸런싱, 복사·덮어쓰기 보호                        |
+| M8~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -287,6 +288,38 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 - 저장 계약/adapter: `src/ports/user-data-repository.ts`, `src/infrastructure/persistence/browser/local-user-data-repository.ts`
 - 포트폴리오 UI: `src/app/portfolio/page.tsx`, `src/features/portfolio-analysis/portfolio-dashboard.tsx`
 - 환율 API: `src/app/api/market/fx/route.ts`
+
+## M7 — 과거 추정 가치와 추천 포트폴리오
+
+상태: 완료
+
+### 수행한 작업
+
+- 현재 보유 수량·조정 종가·과거 방향 환율을 결합하는 결정론적 추정 가치 계산과 API를 구현했다.
+- 6개월~10년 기간, 공통 시작일, 이력 짧은 종목 영향 표시, 공통 기간/이번 실행 제외/취소 선택을 연결했다.
+- PDD의 Stock 80/Bond 20, Momentum 60/40, All Weather, Golden Butterfly 구성과 DBC를 seed로 고정했다.
+- 초기금 1,000만 원, 소수점 매수, 조정 종가/배당 재투자, 월별 리밸런싱, 수수료·세금 0원으로 공통
+  날짜의 KRW 가격 백테스트를 수행하고 누적 수익률·CAGR·변동성·MDD 날짜를 반환한다.
+- 추천 카드는 MDD 기본 정렬과 수익률·변동성·종목 수 정렬, 원형 차트와 동등한 표를 제공한다.
+- 새 포트폴리오 복사를 기본으로 하고 덮어쓰기는 전후 구성 미리보기와 확인을 요구한다.
+
+### 검증 결과
+
+| 명령            | 결과                                                               |
+| --------------- | ------------------------------------------------------------------ |
+| `pnpm validate` | 통과: 17개 파일 100개 테스트, 계층·순환 위반 0건                   |
+| `pnpm test:e2e` | 통과 3/3: 추정 가치, 복사, 덮어쓰기 취소 무변경, axe 중대 위반 0건 |
+| `pnpm build`    | 통과: 분석/추천 API와 `/recommendations` 포함                      |
+| 시각 QA         | 추천 2열 카드 캡처 직접 검사, `design-qa.md` 결과 `passed`         |
+
+관련 요구사항: 흐름 C/D, AC-04~AC-07, AC-10.
+
+### 구현 경로
+
+- 계산: `src/domain/portfolios/historical-value.ts`, `src/domain/backtesting/recommended-portfolios.ts`
+- API: `src/app/api/portfolio-analysis/route.ts`, `src/app/api/recommendations/route.ts`
+- UI: `src/components/charts/historical-value-chart.tsx`, `src/features/recommended-portfolios/recommendations-dashboard.tsx`
+- 계약: `src/contracts/analysis.ts`
 
 ## 다음 개발자 참고
 

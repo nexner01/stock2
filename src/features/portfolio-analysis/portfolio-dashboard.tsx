@@ -1,17 +1,19 @@
 "use client";
 
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import Decimal from "decimal.js";
 import { BriefcaseBusiness, HardDrive, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
+import { HistoricalValueChart } from "@/components/charts/historical-value-chart";
 import { Panel } from "@/components/panel";
 import { canAdd, LocalUserDataRepository } from "@/composition/browser-user-data";
 import {
   exchangeRateDtoSchema,
   instrumentDetailDtoSchema,
   marketOverviewDtoSchema,
+  portfolioAnalysisDtoSchema,
 } from "@/contracts";
 import type { StoredHolding, UserData } from "@/ports";
 
@@ -34,6 +36,7 @@ export function PortfolioDashboard() {
   const [symbol, setSymbol] = useState("");
   const [exchange, setExchange] = useState("XNAS");
   const [quantity, setQuantity] = useState("");
+  const [analysisPeriod, setAnalysisPeriod] = useState("5y");
 
   useEffect(() => {
     let active = true;
@@ -58,6 +61,25 @@ export function PortfolioDashboard() {
   const active =
     data.portfolios.find(({ id }) => id === data.activePortfolioId) ?? data.portfolios[0];
   const holdings = active?.holdings ?? [];
+  const analysis = useMutation({
+    mutationFn: async (strategy: "common-period" | "exclude-short-history" | "cancel") => {
+      const response = await fetch("/api/portfolio-analysis", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          period: analysisPeriod,
+          strategy,
+          holdings: holdings.map(({ symbol, exchange, quantity }) => ({
+            symbol,
+            exchange,
+            quantity,
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return portfolioAnalysisDtoSchema.parse(await response.json());
+    },
+  });
   const detailQueries = useQueries({
     queries: holdings.map((holding) => ({
       queryKey: ["portfolio-quote", holding.exchange, holding.symbol],
@@ -350,6 +372,70 @@ export function PortfolioDashboard() {
                 평가금액은 현재 수량 × 최신 가격 × 해당 통화 환율입니다. 실제 매입 수익률이
                 아닙니다.
               </p>
+            </Panel>
+            <Panel className="analysis-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">HISTORICAL ESTIMATE</p>
+                  <h2>현재 보유 수량 기준 과거 추정 가치</h2>
+                </div>
+              </div>
+              <p className="panel-note">
+                현재 수량 × 해당 일 조정 종가 × 해당 일의 과거 유효 환율입니다. 실제 매입가·현금
+                흐름을 반영한 실제 수익률이 아닙니다.
+              </p>
+              <div className="analysis-controls">
+                <div className="segmented">
+                  {(["6m", "1y", "3y", "5y", "7y", "10y"] as const).map((period) => (
+                    <button
+                      key={period}
+                      aria-pressed={analysisPeriod === period}
+                      onClick={() => setAnalysisPeriod(period)}
+                    >
+                      {period === "6m" ? "6개월" : period.replace("y", "년")}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  disabled={!holdings.length || analysis.isPending}
+                  onClick={() => analysis.mutate("common-period")}
+                >
+                  {analysis.isPending ? "분석 중…" : "분석 실행"}
+                </button>
+              </div>
+              {analysis.isError ? (
+                <div className="error-state" role="alert">
+                  분석 데이터를 불러오지 못했습니다. 저장된 입력은 유지됩니다.
+                </div>
+              ) : null}
+              {analysis.data?.affected.length ? (
+                <div className="analysis-choice">
+                  <strong>
+                    요청 기간보다 이력이 짧은 종목:{" "}
+                    {analysis.data.affected.map(({ symbol }) => symbol).join(", ")}
+                  </strong>
+                  <p>
+                    현재 실제 시작일은 {analysis.data.actualStart}입니다. 모든 종목을 유지하거나
+                    짧은 종목을 이번 실행에서만 제외할 수 있습니다.
+                  </p>
+                  <button onClick={() => analysis.mutate("common-period")}>
+                    공통 기간으로 분석
+                  </button>
+                  <button onClick={() => analysis.mutate("exclude-short-history")}>
+                    짧은 종목 제외
+                  </button>
+                  <button onClick={() => analysis.reset()}>취소</button>
+                </div>
+              ) : null}
+              {analysis.data?.status === "completed" && analysis.data.values.length ? (
+                <>
+                  <HistoricalValueChart result={analysis.data} />
+                  <p className="data-footnote">
+                    실제 범위 {analysis.data.actualStart}~{analysis.data.endDate} · 제외{" "}
+                    {analysis.data.excluded.map(({ symbol }) => symbol).join(", ") || "없음"}
+                  </p>
+                </>
+              ) : null}
             </Panel>
             <Panel className="table-panel">
               <div className="panel-heading">

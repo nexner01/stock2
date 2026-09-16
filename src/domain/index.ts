@@ -51,3 +51,15 @@ export {
   type AnalysisStartPlan,
   type AnalysisStartStrategy,
 } from "./portfolios/analysis-start";
+export {
+  calculateHistoricalEstimatedValue,
+  type HistoricalExchangeRate,
+  type HistoricalHoldingSeries,
+} from "./portfolios/historical-value";
+export {
+  backtestRecommendation,
+  recommendations,
+  type AssetPriceSeries,
+  type BacktestResult,
+  type Recommendation,
+} from "./backtesting/recommended-portfolios";

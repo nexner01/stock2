@@ -297,7 +297,23 @@ localStorage에는 식별자·표시명·수량만 저장한다. 가격, 환율,
 서버 query로 합성하므로 오래된 시장값이 사용자 데이터처럼 영속되지 않는다. 적용 한도는 삭제 정책이
 아니라 신규 쓰기 정책이라서 설정 축소가 기존 사용자 데이터를 자동 삭제하지 않는다.
 
-## 14. 변경 시 점검 순서
+## 14. M7 추가 파일 역할과 통찰
+
+| 파일                                                                | 역할                                                                        |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/domain/portfolios/historical-value.ts`                         | 현재 수량·과거 조정 종가·과거 방향 환율의 일별 추정 가치 순수 계산          |
+| `src/domain/backtesting/recommended-portfolios.ts`                  | 네 seed, 비중 검증, 공통 날짜와 월별 리밸런싱 백테스트                      |
+| `src/contracts/analysis.ts`                                         | 분석 요청·결과와 추천 카드의 Decimal 문자열 계약                            |
+| `src/app/api/portfolio-analysis/route.ts`                           | 브라우저 보유 수량을 저장하지 않고 실행 단위 분석으로 조정하는 HTTP adapter |
+| `src/app/api/recommendations/route.ts`                              | 공급원 OHLCV·환율을 KRW 시계열로 정렬해 네 백테스트를 반환                  |
+| `src/components/charts/historical-value-chart.tsx`                  | 사용자 보유 수량 기준 과거 추정 가치 SVG 차트와 텍스트 대안                 |
+| `src/features/recommended-portfolios/recommendations-dashboard.tsx` | 비교·정렬·가정·복사·보호된 덮어쓰기 UI                                      |
+
+사용자 포트폴리오 분석은 저장 모델을 변경하지 않는 실행 단위 계산이다. 제외 전략은 요청 payload에만
+존재하고 localStorage holdings를 수정하지 않는다. 추천 백테스트는 같은 도메인 성과 함수를 재사용하되,
+사용자 보유 화면에는 실제 매입가가 없으므로 해당 지표를 노출하지 않아 두 의미를 분리한다.
+
+## 15. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.
