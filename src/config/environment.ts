@@ -1,14 +1,6 @@
 import "server-only";
 
-export type RawEnvironment = Readonly<{
-  databaseUrl: string | undefined;
-  realtimePollIntervalSeconds: string | undefined;
-  providerRequestTimeoutSeconds: string | undefined;
-  watchlistMaxSymbols: string | undefined;
-  portfolioMaxSymbols: string | undefined;
-  providerMaxSymbolsPerRequest: string | undefined;
-  providerBatchSize: string | undefined;
-}>;
+import type { RawEnvironment } from "./types";
 
 export const readRawEnvironment = (source: NodeJS.ProcessEnv = process.env): RawEnvironment => ({
   databaseUrl: source.DATABASE_URL,

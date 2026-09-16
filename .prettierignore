@@ -8,4 +8,5 @@ playwright-report
 review
 test-results
 docs/validation/*.json
+drizzle/meta/*.json
 pnpm-lock.yaml
