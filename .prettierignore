@@ -1,0 +1,11 @@
+.next
+AGENTS.md
+coverage
+memory-bank/implementation-plan.md
+memory-bank/product-design-document.md
+node_modules
+playwright-report
+review
+test-results
+docs/validation/*.json
+pnpm-lock.yaml

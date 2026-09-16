@@ -1,0 +1,10 @@
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  msw: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - "@types/node@22.20.3"
+  - "@vitest/mocker@5.0.1"
+  - "@vitest/spy@5.0.1"
+  - vitest@5.0.1
