@@ -1,0 +1,158 @@
+# Stock2 아키텍처와 파일 역할
+
+이 문서는 M1 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
+`memory-bank/product-design-document.md`, 개발 순서와 완료 기준은
+`memory-bank/implementation-plan.md`, 실제 완료 내역은 `memory-bank/progress.md`를 기준으로 한다.
+
+## 1. 아키텍처 개요
+
+```text
+Browser
+  -> src/app, src/features, src/components
+    -> src/application
+      -> src/domain
+      -> src/ports
+        <- src/infrastructure (Node.js only)
+
+src/contracts = 서버/클라이언트 직렬화 경계
+src/config    = 환경 입력을 읽고 적용 설정으로 바꾸는 유일한 경계
+```
+
+의존 방향은 바깥 계층에서 안쪽 계층으로만 향한다. 도메인은 React, Next.js, Yahoo Finance, SQLite와
+환경 변수를 모른다. 공급원과 DB 구현은 `server-only`로 표시하고 Node.js 런타임에서만 실행한다. 현재는
+하나의 Next.js 프로세스로 실행하지만 포트와 DTO가 배포 경계를 대신하므로 후속 서버/클라이언트 분리 시
+도메인 계산을 옮기지 않아도 된다.
+
+## 2. 핵심 통찰
+
+### 수집 원점은 프로세스 시작과 다르다
+
+Yahoo 세션을 준비하지 않은 첫 2초 측정에서는 초기화 비용으로 네 그룹 모두 한 회차를 건너뛰었다.
+세션 준비 후에는 60초 동안 그룹별 30/30회가 성공했다. 따라서 M4 스케줄러의 `T0`는 프로세스 시작
+시각이 아니라 공급원 어댑터가 준비됐음을 확인한 시각이어야 한다. 준비 실패를 정상 수집 실패와 섞지
+말고 시작 상태로 모델링해야 한다.
+
+### 수집 빈도와 데이터 신선도는 별개다
+
+2초 폴링이 성공해도 Yahoo 안내상 한국거래소와 KOSDAQ 데이터는 20분 지연될 수 있다. UI의 조회 주기,
+`marketTimestamp`, `collectedAt`과 시장별 지연 안내를 분리해야 한다. 2초마다 같은 지연 데이터를 받는
+상황도 정상 응답일 수 있다.
+
+### 한국어 검색은 별도 신뢰 경계다
+
+Yahoo 검색은 티커와 영문명 표본을 지원했지만 `삼성전자`를 거부했다. 한국어 이름을 임의 영문 변환하거나
+고정 fixture로 정상 데이터처럼 만들면 안 된다. 검증된 종목 마스터/별칭 데이터가 들어오면 공급원 검색
+앞의 독립 포트로 추가하고 `{ symbol, exchange }`로 Yahoo 결과와 결합한다.
+
+### 로컬 MVP와 재배포 가능 제품은 같은 공급원 결정을 공유할 수 없다
+
+Yahoo는 재배포 금지를 명시하고 `yahoo-finance2`도 비공식 API다. 현재 어댑터 선택은 개인 로컬 검증에만
+유효하다. 외부 공개 범위가 생기면 UI를 바꾸기 전에 provider port의 새 구현과 데이터 라이선스를 먼저
+결정해야 한다.
+
+## 3. 런타임 파일
+
+| 파일 | 역할 |
+|---|---|
+| `src/app/layout.tsx` | 한국어 문서 메타데이터와 전역 레이아웃을 제공하는 Server Component 루트 |
+| `src/app/page.tsx` | M1 애플리케이션 셸을 렌더링하는 홈 Server Component |
+| `src/app/globals.css` | Tailwind 진입점과 초기 다크 테마·포커스·글꼴 기본값 |
+| `src/components/ui/button.tsx` | shadcn/ui 조합 방식을 따르는 저장소 소유 Button primitive |
+| `src/lib/utils.ts` | `clsx`와 `tailwind-merge`를 결합한 표현 계층 className 유틸리티 |
+| `src/config/environment.ts` | `process.env`를 읽을 수 있는 유일한 서버 경계. M2에서 Zod 적용 설정으로 확장 |
+| `src/config/index.ts` | config 모듈의 공개 API |
+| `src/infrastructure/persistence/sqlite/schema.ts` | 초기 Drizzle SQLite schema. 현재는 migration 상태 확인용 `app_metadata`만 정의 |
+| `src/infrastructure/persistence/sqlite/client.ts` | lazy SQLite 연결, WAL 설정과 Drizzle client 생성. 브라우저 import 금지 |
+| `src/infrastructure/persistence/sqlite/index.ts` | SQLite adapter의 공개 API |
+| `src/infrastructure/providers/yahoo-finance/index.ts` | M3 Yahoo adapter가 들어갈 서버 전용 공개 경계 |
+| `src/infrastructure/polling/index.ts` | M4 고정 시각 스케줄러 구현이 들어갈 서버 전용 공개 경계 |
+| `src/infrastructure/logging/index.ts` | Pino 로깅 adapter가 들어갈 서버 전용 공개 경계 |
+| `src/application/index.ts` | 프레임워크 독립 유스케이스의 공개 API 자리 |
+| `src/domain/index.ts` | 값 객체·정책·순수 계산의 공개 API 자리 |
+| `src/ports/index.ts` | provider, repository, clock, scheduler interface의 공개 API 자리 |
+| `src/contracts/index.ts` | Zod DTO와 직렬화 타입의 공개 API 자리 |
+| `src/features/index.ts` | 화면 단위 상호작용 모듈의 공개 API 자리 |
+| `src/components/charts/index.ts` | 접근 가능한 ECharts wrapper가 들어갈 공용 표현 경계 |
+| `src/components/data-status/index.ts` | loading/partial/delayed/stale/failed/empty 표현 컴포넌트 경계 |
+
+빈 `index.ts`는 거대 배럴을 만들기 위한 파일이 아니라 미래 구현이 깊은 경로를 노출하지 않도록 공개
+경계를 먼저 고정한 것이다. 실제 export가 생길 때만 해당 모듈의 공개 타입과 함수만 추가한다.
+
+## 4. 테스트와 검증 파일
+
+| 파일 | 역할 |
+|---|---|
+| `src/app/page.test.tsx` | 애플리케이션 셸의 Vitest/Testing Library 단위 smoke test |
+| `src/test/setup.ts` | jest-dom matcher와 MSW 서버 생명주기를 모든 단위 테스트에 연결 |
+| `src/test/server.ts` | 네트워크 없는 단위/계약 테스트용 MSW Node server |
+| `tests/e2e/smoke.spec.ts` | Chrome에서 홈 진입과 axe serious/critical 위반 0건을 검증 |
+| `scripts/validate-provider.ts` | Yahoo 심볼·검색·차트·배치 probe와 네 그룹 2초 고정 틱 1분 측정 도구 |
+| `docs/validation/provider-probe.json` | 2026-09-16 capability probe의 원본 증거. 코드 fixture나 SLA로 사용하지 않음 |
+| `docs/validation/provider-smoke.json` | 공급원 세션 준비 후 1분 부하 측정의 원본 증거 |
+
+## 5. 빌드·품질·도구 설정 파일
+
+| 파일 | 역할 |
+|---|---|
+| `package.json` | 고정 의존성, Node/pnpm 범위와 개발·검증·DB·공급원 스크립트의 기준 |
+| `pnpm-lock.yaml` | 재현 가능한 의존성 해석의 단일 lockfile. 수동 편집 금지 |
+| `pnpm-workspace.yaml` | 설치 스크립트 허용 목록과 공급망 검사 예외 버전을 기록 |
+| `.nvmrc` | 로컬 Node.js 24 선택 힌트 |
+| `tsconfig.json` | strict, unchecked index, exact optional property 등 TypeScript 안전성 기준 |
+| `next-env.d.ts` | Next.js 타입 참조용 생성 파일. 수동 편집 금지 |
+| `next.config.ts` | strict React, better-sqlite3 외부화, E2E 개발 origin 설정 |
+| `eslint.config.mjs` | Next core web vitals/TypeScript 규칙과 config 외 `process.env` 접근 금지 |
+| `.dependency-cruiser.cjs` | 순환, domain 외부 의존, application→adapter/UI, UI→infrastructure를 차단 |
+| `prettier.config.mjs` | 저장소 코드·문서의 기본 포맷 정책 |
+| `.prettierignore` | 생성물과 기준 문서·리뷰 아카이브가 기계적으로 재작성되지 않도록 보호 |
+| `postcss.config.mjs` | Tailwind CSS 4 PostCSS plugin 연결 |
+| `components.json` | shadcn/ui RSC, 경로 alias와 Lucide 아이콘 정책 |
+| `vitest.config.ts` | jsdom, React, tsconfig path, 단일 worker와 공용 setup 설정 |
+| `playwright.config.ts` | Chrome 프로젝트, 로컬 dev server, trace와 E2E 기준 URL 설정 |
+| `drizzle.config.ts` | SQLite dialect, schema, migration 출력과 로컬 DB 경로 설정 |
+| `.env.example` | 비밀값 없는 환경 변수 이름과 PDD 기본값 예시 |
+| `.gitignore` | 의존성, 빌드, 테스트 결과, 로컬 DB와 실제 환경 파일 제외 |
+
+## 6. 데이터베이스 파일
+
+| 파일 | 역할 |
+|---|---|
+| `drizzle/0000_tan_archangel.sql` | `app_metadata` 초기 schema를 생성하는 첫 migration |
+| `drizzle/meta/0000_snapshot.json` | Drizzle이 다음 migration 차이를 계산하는 생성 snapshot |
+| `drizzle/meta/_journal.json` | migration 적용 순서를 기록하는 생성 journal |
+| `drizzle/.gitkeep` | migration이 없을 때도 디렉터리 구조를 보존 |
+| `data/.gitkeep` | 로컬 SQLite 디렉터리만 보존. 실제 `.db`, WAL, SHM은 Git 제외 |
+
+DB schema를 바꿀 때 generated meta를 직접 수정하지 않고 `pnpm db:generate`를 실행한다. migration은 깨끗한
+DB와 기존 fixture DB 양쪽에서 검증한 뒤 커밋한다.
+
+## 7. 제품·결정·운영 문서
+
+| 파일/경로 | 역할 |
+|---|---|
+| `AGENTS.md` | 저장소 전체의 구조, 기술 스택, 안전성과 완료 기준 |
+| `memory-bank/product-design-document.md` | 제품 동작, 용어, 공식, 상태와 수용 조건의 기준 |
+| `memory-bank/implementation-plan.md` | M0~M9 의존 순서, 작업 목록과 단계 완료 기준 |
+| `memory-bank/progress.md` | 구현된 경로, 검증 명령·결과, 제약과 다음 개발자 인수인계 |
+| `docs/adr/0001-application-architecture.md` | 모듈형 모놀리스와 Node 서버 경계 결정 |
+| `docs/adr/0002-market-data-provider.md` | Yahoo adapter의 조건부 승인, 심볼, 지연과 이용 제한 결정 |
+| `docs/provider-capability-matrix.md` | 시장·심볼·기간/간격·검색·배치의 재현 가능한 조사 결과 |
+| `README.md` | 새 개발자가 그대로 실행할 설치, DB, 서버, 검사와 공급원 명령 |
+| `architecture.md` | 현재 파일 지도와 계층을 가로지르는 설계 통찰(이 문서) |
+
+## 8. 입력 자산과 역사 자료
+
+| 경로 | 역할 |
+|---|---|
+| `design_sample/*.png` | 다섯 주요 화면의 시각적 source of truth. 런타임 이미지 자산으로 재사용 금지 |
+| `review/review_a_ver*/` | PDD 이전 버전에 대한 검토 기록. 런타임·현재 요구사항 기준이 아님 |
+| `review/review_md_ver1/` | 개발 규칙 검토 기록. 현재 실행 규칙은 루트 `AGENTS.md`가 우선 |
+
+## 9. 변경 시 점검 순서
+
+1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
+2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.
+3. infrastructure adapter와 route handler를 가장 바깥에서 연결한다.
+4. 브라우저에는 직렬화된 DTO만 전달하고 서버 객체·Date·DB row를 넘기지 않는다.
+5. `pnpm validate`, 관련 migration test, `pnpm test:e2e`, `pnpm build`를 실행한다.
+6. 완료 경로와 검증 결과를 `memory-bank/progress.md`에 기록한다.
