@@ -255,7 +255,35 @@ M3의 공급원·DB 구현은 모두 `server-only`이며 Next.js 기본 Node.js 
 | `src/application/market-data/collection-engine.test.ts` | fake clock으로 0~23초 상태 전이와 그룹 독립성을 검증                     |
 | `docs/adr/0004-fixed-time-collection-engine.md`         | 고정 T0, 그룹 격리와 실패·장 재개 정책 결정                              |
 
-## 12. 변경 시 점검 순서
+## 12. M5 추가 파일 역할과 통찰
+
+| 파일                                                          | 역할                                                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/contracts/market-overview.ts`                            | 그룹 snapshot, 검색 결과와 종목 시계열의 브라우저 공개 Zod 계약                |
+| `src/composition/market-runtime.ts`                           | HTTP 계층과 구체 provider·DB·scheduler 조립을 분리하는 composition root        |
+| `src/infrastructure/runtime/market-runtime.ts`                | 적용 설정, Yahoo provider, SQLite snapshot 저장소와 수집 엔진의 lazy 서버 조립 |
+| `src/app/api/market/overview/route.ts`                        | 최신 그룹 상태와 서버 적용 조회 주기를 DTO로 반환하는 HTTP adapter             |
+| `src/app/api/market/search/route.ts`                          | 검색 입력을 provider use case에 연결하고 안정된 오류로 변환하는 HTTP adapter   |
+| `src/app/api/market/instruments/[exchange]/[symbol]/route.ts` | 기간 정책, quote와 OHLCV를 종목 상세 DTO로 조합하는 HTTP adapter               |
+| `src/features/market-overview/market-dashboard.tsx`           | 검색·기간·차트 선택 로컬 상태와 서버 Query를 조정하는 시장 화면 경계           |
+| `src/components/charts/market-chart.tsx`                      | SVG ECharts와 동등한 텍스트 요약을 함께 제공하는 client-only 표현 컴포넌트     |
+| `src/components/app-header.tsx`                               | 세 주요 화면에서 재사용하는 전역 내비게이션 Server Component                   |
+| `src/components/data-status/status-badge.tsx`                 | 판별 상태를 아이콘·문구·색으로 함께 표현하는 순수 컴포넌트                     |
+| `src/app/providers.tsx`                                       | 최소 client boundary에서 TanStack Query 수명주기를 제공                        |
+| `docs/validation/m5-market-overview.png`                      | 고정 E2E 상태의 전체 페이지 시각 증거                                          |
+| `design-qa.md`                                                | 기준 샘플, viewport, 비교 결과와 잔여 P3 차이 기록                             |
+
+M5에서 `composition`을 명시적으로 둔 이유는 route handler가 구체 infrastructure를 직접 import하지 않게
+하면서도 application 계층이 adapter 조립 책임을 떠안지 않게 하기 위해서다. 이 경계는 실행 시 한 번만
+구성되며 브라우저 번들에는 포함되지 않는다. SQLite와 수집 엔진은 module evaluation이 아니라 첫 실제
+시장 요청 때 생성한다. 따라서 Next 빌드 worker가 route metadata를 병렬 수집해도 DB WAL 설정을 경쟁하지
+않는다.
+
+브라우저 상태는 서버 snapshot과 사용자 입력을 분리한다. Query 캐시가 가격·상태를 교체해도 검색어,
+기간과 차트 유형은 컴포넌트 로컬 상태로 남는다. 금액·비율은 계약에서 문자열로 유지하고 표시 경계에서만
+Decimal로 해석한다. ECharts에 전달할 때만 시각화 라이브러리 요구 형식인 number로 변환한다.
+
+## 13. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

@@ -11,7 +11,7 @@
 | M2 — 도메인 모델, 계약과 설정       | 완료 | 값 객체·수집 상태·설정 계약·성과 계산과 분석 기간 정책을 구현함                              |
 | M3 — 데이터 공급원과 영속성         | 완료 | SQLite 저장소·원자적 정상 스냅샷과 Yahoo 서버 어댑터를 구현함                                |
 | M4 — 고정 시각 수집 엔진            | 완료 | 고정 T0 스케줄, 네 그룹 상태 머신, timeout·재시도·복구를 구현함                              |
-| M5 — 시황, 검색과 종목 상세         | 대기 | 다음 구현 단계                                                                               |
+| M5 — 시황, 검색과 종목 상세         | 완료 | API 계약, 반응형 시장 화면, ECharts, 부분 갱신, E2E·시각 QA                                  |
 | M6~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
 
 ## M0 — 개발 전 검증과 결정
@@ -219,12 +219,49 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 - 결정론적 테스트: `src/application/market-data/collection-engine.test.ts`
 - 결정 기록: `docs/adr/0004-fixed-time-collection-engine.md`
 
+## M5 — 시황, 검색과 종목 상세
+
+상태: 완료
+
+### 수행한 작업
+
+- 지수·인기·관심 종목 그룹과 종목 상세·검색 DTO를 Zod 계약으로 만들고 세 개의 얇은 route handler를 연결했다.
+- 공통 헤더, 검색, 4열 지수 카드, 종목 요약, 기간/차트 전환, SVG ECharts 가격·거래량, 인기 종목 표,
+  관심 종목·시장 흐름 보조 패널을 디자인 샘플의 다크 금융 화면으로 구현했다.
+- TanStack Query가 서버 적용 조회 주기를 응답에서 읽어 갱신하고 검색어·선택 기간·차트 유형을 query
+  데이터와 분리해 백그라운드 갱신 중 보존한다.
+- 상승·하락은 색상과 부호를 함께 사용하고, 차트에는 실제 범위·간격·최근 조정 종가의 텍스트 대안을
+  제공했다. 모든 표는 의미 있는 헤더를 사용하고 좁은 화면에서 가로 스크롤된다.
+- route handler와 구체 어댑터 사이에 `src/composition` 조립 경계를 두고, SQLite 연결은 요청 시점까지
+  지연해 Next 빌드 worker의 동시 WAL 초기화 충돌을 제거했다.
+- 고정 API fixture로 검색→상세→캔들 전환, 입력 보존과 axe 접근성을 브라우저에서 검증하고 전체 화면
+  캡처를 `docs/validation/m5-market-overview.png`에 남겼다.
+
+### 검증 결과
+
+| 명령            | 결과                                                                    |
+| --------------- | ----------------------------------------------------------------------- |
+| `pnpm validate` | 통과: lint, typecheck, Vitest 14개 파일 91개 테스트, 계층·순환 위반 0건 |
+| `pnpm test:e2e` | 통과: Chrome 1/1, 검색·차트 전환·입력 보존, axe serious/critical 0건    |
+| `pnpm build`    | 통과: 정적 홈과 동적 시장 API 3개, 빌드 시 DB 부작용 없음               |
+| 시각 QA         | `design-qa.md` 최종 결과 `passed`; 구현 캡처 원본 해상도 직접 확인      |
+
+관련 요구사항: 흐름 A/B, AC-01, AC-02, AC-09, AC-15, AC-16, AC-19, AC-24.
+
+### 구현 경로
+
+- 화면: `src/features/market-overview/market-dashboard.tsx`, `src/app/globals.css`
+- 공용 UI: `src/components/app-header.tsx`, `panel.tsx`, `data-status/status-badge.tsx`
+- 차트: `src/components/charts/market-chart.tsx`
+- API/계약: `src/app/api/market/**`, `src/contracts/market-overview.ts`
+- 조립: `src/composition/market-runtime.ts`, `src/infrastructure/runtime/market-runtime.ts`
+- 검증: `src/features/market-overview/market-dashboard.test.tsx`, `tests/e2e/smoke.spec.ts`, `design-qa.md`
+
 ## 다음 개발자 참고
 
-1. M5 route handler 또는 서버 조립부가 provider 준비를 완료한 뒤에만 수집 엔진 `start()`를 호출한다.
-2. 브라우저는 Yahoo adapter가 아니라 서버 최신 snapshot API만 읽어야 한다.
-3. TanStack Query key를 그룹별로 분리하고 입력·포커스·스크롤을 배경 갱신과 분리한다.
-4. 시각 구현 전 `design_sample` 측정값을 token으로 고정하고 샘플 캡처 표시를 UI에 복사하지 않는다.
-5. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
+1. M6의 localStorage repository는 React 컴포넌트가 직접 저장소 API를 호출하지 않도록 feature hook 뒤에 둔다.
+2. M6에서 관심 종목/포트폴리오 심볼을 수집 엔진 그룹 정의에 주입할 때 브라우저 저장값을 서버가 자동
+   소유한다고 가정하지 말고 명시적 요청 계약으로 전달한다.
+3. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
    PDD/ADR에 근거를 추가한다.
-6. `docs/validation/*.json`은 2026-09-16 단일 환경의 증거이며 SLA가 아니다. M9에서 다시 측정한다.
+4. `docs/validation/*`은 2026-09-16 단일 환경의 증거이며 SLA가 아니다. M9에서 다시 측정한다.
