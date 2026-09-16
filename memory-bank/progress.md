@@ -14,7 +14,8 @@
 | M5 — 시황, 검색과 종목 상세         | 완료 | API 계약, 반응형 시장 화면, ECharts, 부분 갱신, E2E·시각 QA                                  |
 | M6 — 관심 종목·포트폴리오           | 완료 | versioned localStorage, 관심 종목, 원화 평가, 저장·삭제 확인, E2E·시각 QA                    |
 | M7 — 과거 추정 가치·추천 백테스트   | 완료 | 공통 시작일, 과거 환율, 4개 추천안, 월별 리밸런싱, 복사·덮어쓰기 보호                        |
-| M8~M9                               | 대기 | 선행 단계 완료 후 순차 진행                                                                  |
+| M8 — 신뢰성·접근성·디자인 완성      | 완료 | 진단 ID, 상태 8종, 키보드·200%·모바일·overflow·axe·최종 디자인 QA                            |
+| M9                                  | 대기 | 부하·안정성·최종 수용 검증                                                                   |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -320,6 +321,34 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 - API: `src/app/api/portfolio-analysis/route.ts`, `src/app/api/recommendations/route.ts`
 - UI: `src/components/charts/historical-value-chart.tsx`, `src/features/recommended-portfolios/recommendations-dashboard.tsx`
 - 계약: `src/contracts/analysis.ts`
+
+## M8 — 신뢰성, 접근성과 디자인 완성
+
+상태: 완료
+
+### 수행한 작업
+
+- 모든 API 실패 응답에 안정 코드, 한국어 메시지, 재시도 가능 여부와 UUID 진단 ID를 부여하고 같은 ID를
+  Pino 로그에 기록한다. 원본 payload, 헤더, 사용자 포트폴리오는 로그 필드에 넣지 않는다.
+- loading/healthy/partial/delayed/stale/failed/empty/paused 상태의 문구·아이콘 표현을 자동 테스트했다.
+- 키보드 포커스, 검색·기간·차트·저장·복사 흐름과 입력 보존을 Playwright에서 검증했다.
+- 640px CSS viewport를 200% 확대 등가 조건으로, 390px를 모바일 조건으로 검사해 body overflow가 없고
+  표 내부 스크롤·차트 최소 높이·1열 전환이 유지됨을 확인했다.
+- 세 데스크톱 화면과 확대·모바일 캡처를 직접 검사하고 `design-qa.md`의 최종 결과를 `passed`로 닫았다.
+
+### 검증 결과
+
+| 명령            | 결과                                                            |
+| --------------- | --------------------------------------------------------------- |
+| `pnpm validate` | 통과: 18개 파일 108개 테스트, 계층·순환 위반 0건                |
+| `pnpm test:e2e` | 통과 4/4, axe serious/critical 0건, 200% 등가·모바일 overflow 0 |
+| 시각 QA         | 5개 구현 캡처 직접 검사, P1/P2 0건, 최종 결과 `passed`          |
+
+### 구현 경로
+
+- 진단: `src/composition/diagnostics.ts`, `src/app/api/**`
+- 상태 테스트: `src/components/data-status/status-badge.test.tsx`
+- 반응형 검증: `tests/e2e/smoke.spec.ts`, `docs/validation/m8-*.png`
 
 ## 다음 개발자 참고
 

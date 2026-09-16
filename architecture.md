@@ -313,7 +313,20 @@ localStorage에는 식별자·표시명·수량만 저장한다. 가격, 환율,
 존재하고 localStorage holdings를 수정하지 않는다. 추천 백테스트는 같은 도메인 성과 함수를 재사용하되,
 사용자 보유 화면에는 실제 매입가가 없으므로 해당 지표를 노출하지 않아 두 의미를 분리한다.
 
-## 15. 변경 시 점검 순서
+## 15. M8 추가 파일 역할과 통찰
+
+| 파일                                               | 역할                                                    |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| `src/composition/diagnostics.ts`                   | 안전한 UUID 진단 ID 생성과 redacted 구조화 로그 연결    |
+| `src/components/data-status/status-badge.test.tsx` | 사용자 표시 상태 8종의 비색상 의미 표현 회귀 방지       |
+| `docs/validation/m8-zoom-200.png`                  | 200% 확대 등가 CSS viewport의 포트폴리오 전체 흐름 증거 |
+| `docs/validation/m8-mobile.png`                    | 390px 추천 화면의 1열·CTA·표 보존 증거                  |
+
+진단 ID 생성은 route handler가 아니라 composition 서비스에 모았다. route는 안정 코드와 사용자 문구를
+선택하고, 조립 서비스는 원인을 분류 가능한 최소 타입만 로그에 남긴다. 이로써 사용자 응답과 서버 로그를
+같은 ID로 연결하면서 내부 예외 문자열과 민감 payload가 브라우저에 노출되지 않는다.
+
+## 16. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

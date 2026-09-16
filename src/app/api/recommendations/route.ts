@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import { NextRequest, NextResponse } from "next/server";
 
 import { marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 import { backtestRecommendation, createInstrumentId, recommendations } from "@/domain";
 
 const periodDays = {
@@ -94,13 +95,14 @@ export async function GET(request: NextRequest) {
       };
     });
     return NextResponse.json(results);
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      {
-        code: "RECOMMENDATIONS_FAILED",
-        message: "추천 포트폴리오 백테스트를 불러오지 못했습니다.",
-        retryable: true,
-      },
+      createDiagnosticError(
+        "RECOMMENDATIONS_FAILED",
+        "추천 포트폴리오 백테스트를 불러오지 못했습니다.",
+        true,
+        error,
+      ),
       { status: 502 },
     );
   }

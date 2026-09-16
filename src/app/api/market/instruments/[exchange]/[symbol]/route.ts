@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createInstrumentId } from "@/domain";
 import { marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 
 export const dynamic = "force-dynamic";
 
@@ -53,13 +54,14 @@ export async function GET(
       })),
       generatedAt: Temporal.Now.instant().toString(),
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      {
-        code: "INSTRUMENT_FAILED",
-        message: "종목 시계열을 불러오지 못했습니다. 종목과 거래소를 확인해 주세요.",
-        retryable: true,
-      },
+      createDiagnosticError(
+        "INSTRUMENT_FAILED",
+        "종목 시계열을 불러오지 못했습니다. 종목과 거래소를 확인해 주세요.",
+        true,
+        error,
+      ),
       { status: 502 },
     );
   }

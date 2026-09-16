@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,9 @@ export async function GET() {
       marketTimestamp: rate.marketTimestamp.toString(),
       collectedAt: rate.collectedAt.toString(),
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { code: "FX_FAILED", message: "원화 환율을 불러오지 못했습니다.", retryable: true },
+      createDiagnosticError("FX_FAILED", "원화 환율을 불러오지 못했습니다.", true, error),
       { status: 502 },
     );
   }

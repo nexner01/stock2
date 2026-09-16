@@ -44,6 +44,47 @@ const recommendation = (id: string, name: string) => ({
   },
 });
 
+test("200% 확대 등가 폭과 모바일에서 핵심 흐름이 잘림 없이 유지된다", async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "stock2:user-data",
+      JSON.stringify({
+        version: 1,
+        watchlist: [],
+        activePortfolioId: "p",
+        portfolios: [
+          {
+            id: "p",
+            name: "내 포트폴리오",
+            holdings: [{ symbol: "AAPL", exchange: "XNAS", name: "Apple", quantity: "1" }],
+          },
+        ],
+      }),
+    ),
+  );
+  await page.setViewportSize({ width: 640, height: 720 });
+  await page.goto("/portfolio");
+  await expect(page.getByRole("heading", { name: "내 포트폴리오 분석" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus")).toBeVisible();
+  await page.screenshot({ path: "docs/validation/m8-zoom-200.png", fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/recommendations");
+  await expect(page.getByRole("heading", { name: "추천 포트폴리오 백테스트" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: "docs/validation/m8-mobile.png", fullPage: true });
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/market/overview", async (route) =>
     route.fulfill({

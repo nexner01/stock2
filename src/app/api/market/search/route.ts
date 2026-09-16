@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,9 @@ export async function GET(request: NextRequest) {
         collectedAt: value.collectedAt.toString(),
       })),
     );
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { code: "SEARCH_FAILED", message: "검색 결과를 불러오지 못했습니다.", retryable: true },
+      createDiagnosticError("SEARCH_FAILED", "검색 결과를 불러오지 못했습니다.", true, error),
       { status: 502 },
     );
   }

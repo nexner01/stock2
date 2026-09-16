@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { ensureMarketRuntime, marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 import type { CollectionGroup } from "@/ports";
 
 export const dynamic = "force-dynamic";
@@ -38,13 +39,14 @@ export async function GET() {
         };
       }),
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      {
-        code: "MARKET_RUNTIME_UNAVAILABLE",
-        message: "시장 데이터 연결을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-        retryable: true,
-      },
+      createDiagnosticError(
+        "MARKET_RUNTIME_UNAVAILABLE",
+        "시장 데이터 연결을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        true,
+        error,
+      ),
       { status: 503 },
     );
   }

@@ -3,6 +3,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { NextRequest, NextResponse } from "next/server";
 
 import { marketRuntime } from "@/composition/market-runtime";
+import { createDiagnosticError } from "@/composition/diagnostics";
 import { calculateHistoricalEstimatedValue, createInstrumentId, planAnalysisStart } from "@/domain";
 import { portfolioAnalysisRequestSchema } from "@/contracts";
 
@@ -120,13 +121,14 @@ export async function POST(request: NextRequest) {
       })),
       appliedExchangeRateDates: result.appliedExchangeRateDates,
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      {
-        code: "PORTFOLIO_ANALYSIS_FAILED",
-        message: "과거 추정 가치 분석을 완료하지 못했습니다.",
-        retryable: true,
-      },
+      createDiagnosticError(
+        "PORTFOLIO_ANALYSIS_FAILED",
+        "과거 추정 가치 분석을 완료하지 못했습니다.",
+        true,
+        error,
+      ),
       { status: 422 },
     );
   }
