@@ -1,0 +1,25 @@
+{
+  "kind": "local-app-performance",
+  "executedAt": "2026-09-17T04:10:19.565Z",
+  "environment": {
+    "node": "v24.19.0",
+    "browser": "Google Chrome (headless)"
+  },
+  "baseUrl": "http://127.0.0.1:3100",
+  "measurements": {
+    "firstScreenMs": 434.93,
+    "searchMs": 939.74,
+    "filterMs": 47.11,
+    "sortMs": 15.05
+  },
+  "targetsMs": {
+    "firstScreen": 5000,
+    "searchFilterSort": 1000
+  },
+  "targetMet": {
+    "firstScreen": true,
+    "search": true,
+    "filter": true,
+    "sort": true
+  }
+}

@@ -29,6 +29,13 @@ export const marketGroupDtoSchema = z.object({
   ]),
   lastHealthyAt: utcIsoInstantSchema.nullable(),
   skipped: z.number().int().nonnegative(),
+  consecutiveFailures: z.number().int().nonnegative(),
+  stopped: z.boolean(),
+  batches: z.object({
+    total: z.number().int().nonnegative(),
+    successful: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
   values: z.array(quoteSnapshotDtoSchema),
 });
 
@@ -37,6 +44,11 @@ export const marketOverviewDtoSchema = z.object({
   limits: z.object({
     watchlistMaxSymbols: z.number().int().positive(),
     portfolioMaxSymbols: z.number().int().positive(),
+  }),
+  provider: z.object({
+    requestTimeoutSeconds: z.number().int().positive(),
+    batchSize: z.number().int().positive(),
+    maxSymbolsPerRequest: z.number().int().positive(),
   }),
   groups: z.array(marketGroupDtoSchema),
 });

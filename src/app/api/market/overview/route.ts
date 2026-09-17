@@ -17,6 +17,11 @@ export async function GET() {
         watchlistMaxSymbols: marketRuntime.config.limits.watchlist_max_symbols,
         portfolioMaxSymbols: marketRuntime.config.limits.portfolio_max_symbols,
       },
+      provider: {
+        requestTimeoutSeconds: marketRuntime.config.provider.request_timeout_seconds,
+        batchSize: marketRuntime.config.provider.batch_size,
+        maxSymbolsPerRequest: marketRuntime.config.provider.max_symbols_per_request,
+      },
       groups: groupIds.map((id) => {
         const state = marketRuntime.engine.state(id);
         return {
@@ -24,6 +29,13 @@ export async function GET() {
           status: state.status,
           lastHealthyAt: state.lastHealthyAt?.toString() ?? null,
           skipped: state.metrics.skipped,
+          consecutiveFailures: state.consecutiveFailures,
+          stopped: state.stopped,
+          batches: {
+            total: state.lastBatchCount,
+            successful: state.lastSuccessfulBatches,
+            failed: state.lastFailedBatches,
+          },
           values: state.values.map((value) => ({
             symbol: value.instrument.symbol,
             exchange: value.instrument.exchange,

@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createInstrumentId, createOhlcv } from "@/domain";
@@ -14,7 +15,7 @@ import { createInstrumentId, createOhlcv } from "@/domain";
 import { SqliteCollectionSnapshotRepository } from "./collection-snapshot-repository";
 import type { Stock2Database } from "./client";
 import { SqliteOhlcvRepository } from "./ohlcv-repository";
-import { collectionRuns, ohlcvRecords } from "./schema";
+import { appMetadata, collectionRuns, ohlcvRecords } from "./schema";
 import * as schema from "./schema";
 
 describe("SQLite market-data repositories", () => {
@@ -51,6 +52,40 @@ describe("SQLite market-data repositories", () => {
         "healthy_snapshots",
       ]),
     );
+  });
+
+  it("upgrades an M1 fixture database without losing existing data", () => {
+    const legacySqlite = new Database(":memory:");
+    try {
+      const migrationsFolder = resolve(process.cwd(), "drizzle");
+      const [initialMigration] = readMigrationFiles({ migrationsFolder });
+      if (!initialMigration) throw new Error("initial migration fixture is missing");
+      for (const statement of initialMigration.sql) legacySqlite.exec(statement);
+      legacySqlite.exec(
+        "CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric)",
+      );
+      legacySqlite
+        .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+        .run(initialMigration.hash, initialMigration.folderMillis);
+      legacySqlite
+        .prepare("INSERT INTO app_metadata (key, value) VALUES (?, ?)")
+        .run("fixture-version", "m1");
+
+      const legacyDatabase = drizzle(legacySqlite, { schema });
+      migrate(legacyDatabase, { migrationsFolder });
+
+      expect(legacyDatabase.select().from(appMetadata).all()).toContainEqual({
+        key: "fixture-version",
+        value: "m1",
+      });
+      expect(
+        legacySqlite
+          .prepare("select name from sqlite_master where type = 'table' and name = 'ohlcv_records'")
+          .get(),
+      ).toBeDefined();
+    } finally {
+      legacySqlite.close();
+    }
   });
 
   it("keeps the latest failed result separate from the last healthy snapshot", async () => {

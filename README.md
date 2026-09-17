@@ -60,8 +60,19 @@ pnpm build
 ```bash
 pnpm provider:probe
 pnpm provider:smoke
+pnpm provider:smoke:candidate
+pnpm provider:stability
 ```
 
-두 명령은 실제 Yahoo Finance 네트워크를 사용한다. 결과와 이용 제한은
+네 명령은 실제 Yahoo Finance 네트워크를 사용한다. 기본 스모크는 2초, 운영 후보 스모크는 5초로 각각
+1분간 실행하며 안정성 검증은 최대 관심 종목·포트폴리오 구성으로 1시간 실행한다. 결과와 이용 제한은
 `docs/provider-capability-matrix.md`에 기록한다. Yahoo 데이터는 로컬 MVP 검증에만 사용하며 공개 재배포
 근거로 사용하지 않는다.
+
+프로덕션 서버를 `pnpm start`로 실행한 상태에서 첫 화면과 검색·필터·정렬 목표를 측정한다.
+
+```bash
+pnpm performance:local
+```
+
+원본 결과는 `docs/validation/app-performance.json`에 기록된다.

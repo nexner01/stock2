@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 
 import type { InstrumentDetailDto } from "@/contracts";
 
+import { findObservedGaps } from "./observed-gaps";
+
 export function MarketChart({
   detail,
   type,
@@ -96,6 +98,10 @@ export function MarketChart({
   }, [detail, type]);
 
   const latest = detail.ohlcv.at(-1);
+  const gaps = findObservedGaps(
+    detail.ohlcv.map(({ timestamp }) => timestamp),
+    detail.interval,
+  );
   return (
     <div>
       <div
@@ -109,6 +115,18 @@ export function MarketChart({
         간격 {detail.interval}, 최근 조정 종가 {latest?.adjustedClose ?? "없음"}{" "}
         {detail.quote.currency}
       </p>
+      <p className="data-footnote">
+        실제 데이터 범위 {detail.range?.start.slice(0, 10) ?? "없음"}~
+        {detail.range?.end.slice(0, 10) ?? "없음"} · 간격 {detail.interval} · 기준 통화{" "}
+        {detail.quote.currency}
+      </p>
+      {gaps.length ? (
+        <div className="inline-warning" role="note">
+          관측 공백 {gaps.length}개가 있습니다. 예: {gaps[0]?.after.slice(0, 10)} 이후~
+          {gaps[0]?.before.slice(0, 10)} 이전. 거래소 휴장 또는 공급원 누락일 수 있으며 값을 임의로
+          보간하지 않습니다. 차트와 계산은 반환된 관측값만 사용합니다.
+        </div>
+      ) : null}
     </div>
   );
 }

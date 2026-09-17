@@ -4,7 +4,7 @@ import { Temporal } from "@js-temporal/polyfill";
 
 import { FixedTimeCollectionEngine, type CollectionGroupDefinition } from "@/application";
 import { loadAppliedConfig } from "@/config";
-import { createInstrumentId, type Interval } from "@/domain";
+import { createInstrumentId, type InstrumentId, type Interval } from "@/domain";
 import { appLogger } from "@/infrastructure/logging";
 import { SystemClock, SystemScheduler } from "@/infrastructure/polling";
 import {
@@ -24,6 +24,11 @@ const provider = new YahooFinanceMarketDataProvider(
   config.provider.request_timeout_seconds,
 );
 
+const browserSubscriptions: Record<"watchlist" | "portfolio", readonly InstrumentId[]> = {
+  watchlist: [],
+  portfolio: [],
+};
+
 const groupDefinitions: CollectionGroupDefinition[] = [
   {
     id: "indices",
@@ -41,8 +46,16 @@ const groupDefinitions: CollectionGroupDefinition[] = [
       ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"].map((symbol) => createInstrumentId(symbol, "XNAS")),
     getMarketStatus: () => "open",
   },
-  { id: "watchlist", getInstruments: () => [], getMarketStatus: () => "open" },
-  { id: "portfolio", getInstruments: () => [], getMarketStatus: () => "open" },
+  {
+    id: "watchlist",
+    getInstruments: () => browserSubscriptions.watchlist,
+    getMarketStatus: () => "open",
+  },
+  {
+    id: "portfolio",
+    getInstruments: () => browserSubscriptions.portfolio,
+    getMarketStatus: () => "open",
+  },
 ];
 
 let engine: FixedTimeCollectionEngine | undefined;
@@ -70,7 +83,11 @@ let ready: Promise<void> | null = null;
 export const ensureMarketRuntime = (): Promise<void> => {
   ready ??= provider
     .getIndices([createInstrumentId("KOSPI", "XKRX")])
-    .then(() => getEngine().start());
+    .then(() => getEngine().start())
+    .catch((error: unknown) => {
+      ready = null;
+      throw error;
+    });
   return ready;
 };
 
@@ -80,6 +97,10 @@ export const marketRuntime = {
     return getEngine();
   },
   provider,
+  setBrowserSubscriptions(watchlist: readonly InstrumentId[], portfolio: readonly InstrumentId[]) {
+    browserSubscriptions.watchlist = [...watchlist];
+    browserSubscriptions.portfolio = [...portfolio];
+  },
   now: () => Temporal.Now.instant(),
   periodFor: (period: string): { days: number; interval: Interval } => {
     switch (period) {

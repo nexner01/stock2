@@ -1,16 +1,16 @@
 {
   "kind": "provider-smoke",
   "provider": "Yahoo Finance via yahoo-finance2 4.0.2",
-  "startedAt": "2026-09-17T02:57:28.333Z",
-  "finishedAt": "2026-09-17T02:58:28.334Z",
+  "startedAt": "2026-09-17T02:58:51.248Z",
+  "finishedAt": "2026-09-17T02:59:51.255Z",
   "configuration": {
     "durationSeconds": 60,
-    "intervalMs": 2000,
+    "intervalMs": 5000,
     "timeoutMs": 5000,
     "batchSize": 10,
     "fixedTick": true,
     "providerSessionWarmup": true,
-    "warmupDurationMs": 1516.72,
+    "warmupDurationMs": 1860.31,
     "maximumConfiguredSymbols": {
       "watchlist": 20,
       "portfolio": 10
@@ -20,77 +20,77 @@
   "passed": true,
   "groups": {
     "indices": {
-      "attempts": 30,
-      "batches": 30,
-      "successes": 30,
+      "attempts": 12,
+      "batches": 12,
+      "successes": 12,
       "failures": 0,
       "errorRatePercent": 0,
       "delayed": 0,
       "skipped": 0,
       "http429": 0,
       "connectionRecoveries": 0,
-      "averageMs": 192.75,
-      "p95Ms": 277.24
+      "averageMs": 379.09,
+      "p95Ms": 494.2
     },
     "popular": {
-      "attempts": 30,
-      "batches": 30,
-      "successes": 30,
+      "attempts": 12,
+      "batches": 12,
+      "successes": 12,
       "failures": 0,
       "errorRatePercent": 0,
       "delayed": 0,
       "skipped": 0,
       "http429": 0,
       "connectionRecoveries": 0,
-      "averageMs": 191.73,
-      "p95Ms": 347.83
+      "averageMs": 403.63,
+      "p95Ms": 495.43
     },
     "watchlist": {
-      "attempts": 30,
-      "batches": 60,
-      "successes": 30,
+      "attempts": 12,
+      "batches": 24,
+      "successes": 12,
       "failures": 0,
       "errorRatePercent": 0,
       "delayed": 0,
       "skipped": 0,
       "http429": 0,
       "connectionRecoveries": 0,
-      "averageMs": 233.53,
-      "p95Ms": 352.73
+      "averageMs": 417.7,
+      "p95Ms": 499.56
     },
     "portfolio": {
-      "attempts": 30,
-      "batches": 30,
-      "successes": 30,
+      "attempts": 12,
+      "batches": 12,
+      "successes": 12,
       "failures": 0,
       "errorRatePercent": 0,
       "delayed": 0,
       "skipped": 0,
       "http429": 0,
       "connectionRecoveries": 0,
-      "averageMs": 371.77,
-      "p95Ms": 574.11
+      "averageMs": 751.13,
+      "p95Ms": 972.45
     }
   },
   "process": {
     "memorySamples": [
       {
         "elapsedSeconds": 0,
-        "rssBytes": 97116160,
-        "heapUsedBytes": 17760888
+        "rssBytes": 79486976,
+        "heapUsedBytes": 17500216
       },
       {
-        "elapsedSeconds": 60,
-        "rssBytes": 104185856,
-        "heapUsedBytes": 22296848
+        "elapsedSeconds": 60.01,
+        "rssBytes": 82767872,
+        "heapUsedBytes": 20867872
       }
     ],
-    "initialRssBytes": 97116160,
-    "finalRssBytes": 104185856,
-    "peakRssBytes": 104185856,
-    "initialHeapUsedBytes": 17760888,
-    "finalHeapUsedBytes": 22296848,
-    "peakHeapUsedBytes": 22296848,
+    "initialRssBytes": 79486976,
+    "finalRssBytes": 82767872,
+    "peakRssBytes": 82767872,
+    "initialHeapUsedBytes": 17500216,
+    "finalHeapUsedBytes": 20867872,
+    "peakHeapUsedBytes": 20867872,
     "unhandledExceptions": 0
   }
 }

@@ -1,0 +1,391 @@
+{
+  "kind": "provider-stability",
+  "provider": "Yahoo Finance via yahoo-finance2 4.0.2",
+  "startedAt": "2026-09-17T03:00:10.006Z",
+  "finishedAt": "2026-09-17T04:00:10.010Z",
+  "configuration": {
+    "durationSeconds": 3600,
+    "intervalMs": 2000,
+    "timeoutMs": 5000,
+    "batchSize": 10,
+    "fixedTick": true,
+    "providerSessionWarmup": true,
+    "warmupDurationMs": 1937.83,
+    "maximumConfiguredSymbols": {
+      "watchlist": 20,
+      "portfolio": 10
+    }
+  },
+  "passCriteria": "the full duration completes for every group without an unhandled process exception; provider errors and recoveries are recorded",
+  "passed": true,
+  "groups": {
+    "indices": {
+      "attempts": 1798,
+      "batches": 1798,
+      "successes": 1797,
+      "failures": 1,
+      "errorRatePercent": 0.06,
+      "delayed": 1,
+      "skipped": 2,
+      "http429": 0,
+      "connectionRecoveries": 1,
+      "averageMs": 188.97,
+      "p95Ms": 272.97
+    },
+    "popular": {
+      "attempts": 1800,
+      "batches": 1800,
+      "successes": 1800,
+      "failures": 0,
+      "errorRatePercent": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "connectionRecoveries": 0,
+      "averageMs": 202.13,
+      "p95Ms": 287.55
+    },
+    "watchlist": {
+      "attempts": 1800,
+      "batches": 3600,
+      "successes": 1800,
+      "failures": 0,
+      "errorRatePercent": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "connectionRecoveries": 0,
+      "averageMs": 218.49,
+      "p95Ms": 302.99
+    },
+    "portfolio": {
+      "attempts": 1800,
+      "batches": 1800,
+      "successes": 1800,
+      "failures": 0,
+      "errorRatePercent": 0,
+      "delayed": 0,
+      "skipped": 0,
+      "http429": 0,
+      "connectionRecoveries": 0,
+      "averageMs": 370.55,
+      "p95Ms": 459.91
+    }
+  },
+  "process": {
+    "memorySamples": [
+      {
+        "elapsedSeconds": 0,
+        "rssBytes": 79380480,
+        "heapUsedBytes": 17524648
+      },
+      {
+        "elapsedSeconds": 60,
+        "rssBytes": 89849856,
+        "heapUsedBytes": 23369592
+      },
+      {
+        "elapsedSeconds": 120.01,
+        "rssBytes": 97468416,
+        "heapUsedBytes": 20376832
+      },
+      {
+        "elapsedSeconds": 180.01,
+        "rssBytes": 108781568,
+        "heapUsedBytes": 30938056
+      },
+      {
+        "elapsedSeconds": 240.01,
+        "rssBytes": 112771072,
+        "heapUsedBytes": 32426200
+      },
+      {
+        "elapsedSeconds": 300.01,
+        "rssBytes": 138752000,
+        "heapUsedBytes": 32034992
+      },
+      {
+        "elapsedSeconds": 360,
+        "rssBytes": 143241216,
+        "heapUsedBytes": 22920576
+      },
+      {
+        "elapsedSeconds": 420.01,
+        "rssBytes": 141836288,
+        "heapUsedBytes": 38959720
+      },
+      {
+        "elapsedSeconds": 480.01,
+        "rssBytes": 144158720,
+        "heapUsedBytes": 35645904
+      },
+      {
+        "elapsedSeconds": 540.01,
+        "rssBytes": 189214720,
+        "heapUsedBytes": 65372056
+      },
+      {
+        "elapsedSeconds": 600.01,
+        "rssBytes": 196018176,
+        "heapUsedBytes": 54922472
+      },
+      {
+        "elapsedSeconds": 660.01,
+        "rssBytes": 197439488,
+        "heapUsedBytes": 49784496
+      },
+      {
+        "elapsedSeconds": 720,
+        "rssBytes": 195280896,
+        "heapUsedBytes": 39099744
+      },
+      {
+        "elapsedSeconds": 780.01,
+        "rssBytes": 197545984,
+        "heapUsedBytes": 32829320
+      },
+      {
+        "elapsedSeconds": 840,
+        "rssBytes": 195174400,
+        "heapUsedBytes": 24115464
+      },
+      {
+        "elapsedSeconds": 900.01,
+        "rssBytes": 196558848,
+        "heapUsedBytes": 22460520
+      },
+      {
+        "elapsedSeconds": 960.01,
+        "rssBytes": 199897088,
+        "heapUsedBytes": 69464752
+      },
+      {
+        "elapsedSeconds": 1020.01,
+        "rssBytes": 196628480,
+        "heapUsedBytes": 58443952
+      },
+      {
+        "elapsedSeconds": 1080,
+        "rssBytes": 198586368,
+        "heapUsedBytes": 49272256
+      },
+      {
+        "elapsedSeconds": 1140.01,
+        "rssBytes": 196030464,
+        "heapUsedBytes": 40115680
+      },
+      {
+        "elapsedSeconds": 1200.01,
+        "rssBytes": 198422528,
+        "heapUsedBytes": 35910816
+      },
+      {
+        "elapsedSeconds": 1260,
+        "rssBytes": 195911680,
+        "heapUsedBytes": 31283072
+      },
+      {
+        "elapsedSeconds": 1320.01,
+        "rssBytes": 198926336,
+        "heapUsedBytes": 22903472
+      },
+      {
+        "elapsedSeconds": 1380.01,
+        "rssBytes": 200527872,
+        "heapUsedBytes": 71724848
+      },
+      {
+        "elapsedSeconds": 1440,
+        "rssBytes": 198221824,
+        "heapUsedBytes": 59533808
+      },
+      {
+        "elapsedSeconds": 1500.01,
+        "rssBytes": 199598080,
+        "heapUsedBytes": 50266632
+      },
+      {
+        "elapsedSeconds": 1560.02,
+        "rssBytes": 197165056,
+        "heapUsedBytes": 38000392
+      },
+      {
+        "elapsedSeconds": 1620.01,
+        "rssBytes": 198787072,
+        "heapUsedBytes": 29360136
+      },
+      {
+        "elapsedSeconds": 1680.01,
+        "rssBytes": 195809280,
+        "heapUsedBytes": 18012240
+      },
+      {
+        "elapsedSeconds": 1740,
+        "rssBytes": 197808128,
+        "heapUsedBytes": 63982024
+      },
+      {
+        "elapsedSeconds": 1800.02,
+        "rssBytes": 200097792,
+        "heapUsedBytes": 55924752
+      },
+      {
+        "elapsedSeconds": 1860,
+        "rssBytes": 196907008,
+        "heapUsedBytes": 44626344
+      },
+      {
+        "elapsedSeconds": 1920.01,
+        "rssBytes": 198569984,
+        "heapUsedBytes": 36042336
+      },
+      {
+        "elapsedSeconds": 1980.01,
+        "rssBytes": 196100096,
+        "heapUsedBytes": 23472112
+      },
+      {
+        "elapsedSeconds": 2040.01,
+        "rssBytes": 198373376,
+        "heapUsedBytes": 69278928
+      },
+      {
+        "elapsedSeconds": 2100.01,
+        "rssBytes": 199974912,
+        "heapUsedBytes": 61444104
+      },
+      {
+        "elapsedSeconds": 2160.01,
+        "rssBytes": 197316608,
+        "heapUsedBytes": 54732576
+      },
+      {
+        "elapsedSeconds": 2220,
+        "rssBytes": 199667712,
+        "heapUsedBytes": 49439848
+      },
+      {
+        "elapsedSeconds": 2280.01,
+        "rssBytes": 196845568,
+        "heapUsedBytes": 42702704
+      },
+      {
+        "elapsedSeconds": 2340.02,
+        "rssBytes": 199434240,
+        "heapUsedBytes": 33584304
+      },
+      {
+        "elapsedSeconds": 2400.01,
+        "rssBytes": 196472832,
+        "heapUsedBytes": 20058808
+      },
+      {
+        "elapsedSeconds": 2460.02,
+        "rssBytes": 198598656,
+        "heapUsedBytes": 65686056
+      },
+      {
+        "elapsedSeconds": 2520,
+        "rssBytes": 200232960,
+        "heapUsedBytes": 54416288
+      },
+      {
+        "elapsedSeconds": 2580.01,
+        "rssBytes": 197636096,
+        "heapUsedBytes": 44176208
+      },
+      {
+        "elapsedSeconds": 2640.01,
+        "rssBytes": 199675904,
+        "heapUsedBytes": 34860440
+      },
+      {
+        "elapsedSeconds": 2700.01,
+        "rssBytes": 196681728,
+        "heapUsedBytes": 18067632
+      },
+      {
+        "elapsedSeconds": 2760.01,
+        "rssBytes": 198291456,
+        "heapUsedBytes": 64531816
+      },
+      {
+        "elapsedSeconds": 2820.01,
+        "rssBytes": 200261632,
+        "heapUsedBytes": 55961456
+      },
+      {
+        "elapsedSeconds": 2880.01,
+        "rssBytes": 197828608,
+        "heapUsedBytes": 44518680
+      },
+      {
+        "elapsedSeconds": 2940.01,
+        "rssBytes": 193822720,
+        "heapUsedBytes": 34797952
+      },
+      {
+        "elapsedSeconds": 3000.01,
+        "rssBytes": 190636032,
+        "heapUsedBytes": 21093000
+      },
+      {
+        "elapsedSeconds": 3060.02,
+        "rssBytes": 192290816,
+        "heapUsedBytes": 64685696
+      },
+      {
+        "elapsedSeconds": 3120.01,
+        "rssBytes": 194891776,
+        "heapUsedBytes": 56347872
+      },
+      {
+        "elapsedSeconds": 3180,
+        "rssBytes": 191381504,
+        "heapUsedBytes": 44636928
+      },
+      {
+        "elapsedSeconds": 3240.01,
+        "rssBytes": 192462848,
+        "heapUsedBytes": 37585680
+      },
+      {
+        "elapsedSeconds": 3300.01,
+        "rssBytes": 188977152,
+        "heapUsedBytes": 23609128
+      },
+      {
+        "elapsedSeconds": 3360,
+        "rssBytes": 191295488,
+        "heapUsedBytes": 70206008
+      },
+      {
+        "elapsedSeconds": 3420,
+        "rssBytes": 193425408,
+        "heapUsedBytes": 61830592
+      },
+      {
+        "elapsedSeconds": 3480.01,
+        "rssBytes": 190705664,
+        "heapUsedBytes": 51518096
+      },
+      {
+        "elapsedSeconds": 3540.01,
+        "rssBytes": 192327680,
+        "heapUsedBytes": 42899584
+      },
+      {
+        "elapsedSeconds": 3600,
+        "rssBytes": 188215296,
+        "heapUsedBytes": 29571360
+      }
+    ],
+    "initialRssBytes": 79380480,
+    "finalRssBytes": 188215296,
+    "peakRssBytes": 200527872,
+    "initialHeapUsedBytes": 17524648,
+    "finalHeapUsedBytes": 29571360,
+    "peakHeapUsedBytes": 71724848,
+    "unhandledExceptions": 0
+  }
+}

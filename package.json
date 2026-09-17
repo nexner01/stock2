@@ -25,7 +25,10 @@
     "db:migrate": "drizzle-kit migrate",
     "smoke:polling": "pnpm provider:smoke",
     "provider:probe": "tsx scripts/validate-provider.ts --probe --output docs/validation/provider-probe.json",
-    "provider:smoke": "tsx scripts/validate-provider.ts --smoke --duration-seconds 60 --output docs/validation/provider-smoke.json"
+    "provider:smoke": "tsx scripts/validate-provider.ts --smoke --duration-seconds 60 --interval-seconds 2 --output docs/validation/provider-smoke.json",
+    "provider:smoke:candidate": "tsx scripts/validate-provider.ts --smoke --duration-seconds 60 --interval-seconds 5 --output docs/validation/provider-smoke-candidate.json",
+    "provider:stability": "tsx scripts/validate-provider.ts --stability --duration-seconds 3600 --interval-seconds 2 --output docs/validation/provider-stability.json",
+    "performance:local": "tsx scripts/validate-performance.ts --base-url http://127.0.0.1:3000 --output docs/validation/app-performance.json"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",

@@ -7,7 +7,7 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:3101",
     trace: "retain-on-failure",
   },
   projects: [
@@ -17,8 +17,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://127.0.0.1:3000",
+    command: "pnpm dev -p 3101",
+    url: "http://127.0.0.1:3101",
     reuseExistingServer: false,
     timeout: 120_000,
   },

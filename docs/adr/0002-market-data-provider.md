@@ -21,8 +21,9 @@
 - 추천 ETF는 PDD의 `VTI`, `BND`, `MTUM`, `TLT`, `IEF`, `DBC`, `GLD`, `IJS`, `SHY`를 그대로 사용한다.
 - 실시간 quote의 애플리케이션 기본 배치는 10개로 유지한다. 4·10·20개 요청이 모두 성공했지만 Yahoo가
   공식 한도를 공개하지 않으므로 20개 성공을 계약상 보장으로 해석하지 않는다.
-- 공급원 세션을 수집 원점 전에 초기화한다. 초기화하지 않은 첫 측정에서는 네 그룹 모두 첫 회차 한 번을
-  건너뛰었고, 초기화 후 2초 고정 주기 1분 측정은 모든 그룹이 30/30회 성공했다.
+- 공급원 세션을 수집 원점 전에 초기화한다. 2026-09-17 재측정에서 2초 고정 주기는 모든 그룹이
+  30/30회, 5초 후보 주기는 12/12회 성공했고 timeout, delayed, skip, HTTP 429가 모두 0회였다. 기본값은
+  2초를 유지하고 5초는 외부 환경 변화 시 명시적으로 적용할 수 있는 후보로 남긴다.
 - 한국어 회사명 직접 검색은 검증에서 거부됐다. 초기 검색은 티커·영문명을 지원하고, 한국어 이름 검색은
   검증된 별칭/종목 마스터 인덱스를 별도로 확보하기 전까지 비지원 사유를 명시한다.
 
@@ -42,11 +43,15 @@ Yahoo는 Finance 정보를 재배포하지 말라고 명시하며, `yahoo-financ
 - Yahoo 조정 종가 정의: <https://help.yahoo.com/kb/SLN28256.html>
 - Yahoo 과거 데이터와 라이선스별 다운로드 제한: <https://help.yahoo.com/kb/sln2311.html>
 - `yahoo-finance2` 비공식 API 및 서버 실행 제약: <https://github.com/gadicc/yahoo-finance2>
-- 검증 결과: `docs/validation/provider-probe.json`, `docs/validation/provider-smoke.json`
+- 검증 결과: `docs/validation/provider-probe.json`, `docs/validation/provider-smoke.json`,
+  `docs/validation/provider-smoke-candidate.json`, `docs/validation/provider-stability.json`
 
 ## 후속 조건
 
 - M3에서 원본 응답 Zod 검증, 명시적 도메인 mapper, 심볼 매핑 격리, AbortSignal 타임아웃과 안정된 오류
   분류를 구현했다. 계약 테스트는 고정 fixture만 사용하며 실 네트워크에 의존하지 않는다.
 - 배포 범위가 로컬을 벗어나면 이 ADR을 재검토한다.
-- 장시간 안정성, 429, 재연결은 M9에서 다시 검증한다.
+- M9에서 최대 구성 2초 주기의 1시간 안정성, 429, 재연결과 프로세스 메모리를 실측하고 결과를 검증
+  산출물에 고정했다. 주요 지수에서 timeout 1회와 skip 2회 뒤 연결 회복 1회가 있었고, 다른 세 그룹은
+  1,800/1,800회 성공했으며 429와 처리되지 않은 예외는 0회였다. 이 측정은 공급원 SLA가 아니므로 외부
+  공개 전 공급원 결정은 다시 검토한다.

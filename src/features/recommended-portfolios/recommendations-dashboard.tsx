@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { Panel } from "@/components/panel";
-import { LocalUserDataRepository } from "@/composition/browser-user-data";
+import { LocalUserDataRepository, syncMarketSubscriptions } from "@/composition/browser-user-data";
 import { recommendationsDtoSchema, type RecommendationDto } from "@/contracts";
 import type { StoredPortfolio, UserData } from "@/ports";
 
@@ -55,11 +55,13 @@ export function RecommendationsDashboard() {
     )
       return;
     const portfolio = toPortfolio(item);
-    repository.save({
+    const next = {
       ...data,
       portfolios: [...data.portfolios, portfolio],
       activePortfolioId: portfolio.id,
-    });
+    };
+    repository.save(next);
+    void syncMarketSubscriptions(next);
     setNotice(`${item.name}을(를) 새 포트폴리오로 저장했습니다.`);
   }
 
@@ -90,6 +92,7 @@ export function RecommendationsDashboard() {
       ),
     };
     repository.save(next);
+    void syncMarketSubscriptions(next);
     setNotice(`${item.name} 구성으로 현재 포트폴리오를 변경했습니다.`);
   }
 

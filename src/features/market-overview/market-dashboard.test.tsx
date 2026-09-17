@@ -25,27 +25,60 @@ const quote = {
   collectedAt: "2026-09-16T01:00:01Z",
 } as const;
 
+const indexQuote = {
+  ...quote,
+  symbol: "KOSPI",
+  exchange: "XKRX",
+  name: "KOSPI",
+  currency: "KRW",
+} as const;
+
 function overview() {
   return {
     pollIntervalSeconds: 2,
     limits: { watchlistMaxSymbols: 20, portfolioMaxSymbols: 10 },
+    provider: { requestTimeoutSeconds: 5, batchSize: 10, maxSymbolsPerRequest: 10 },
     groups: [
       {
         id: "indices",
         status: "healthy",
         lastHealthyAt: quote.collectedAt,
         skipped: 0,
-        values: [quote],
+        consecutiveFailures: 0,
+        stopped: false,
+        batches: { total: 1, successful: 1, failed: 0 },
+        values: [indexQuote],
       },
       {
         id: "popular",
         status: "healthy",
         lastHealthyAt: quote.collectedAt,
         skipped: 0,
+        consecutiveFailures: 0,
+        stopped: false,
+        batches: { total: 1, successful: 1, failed: 0 },
         values: [quote],
       },
-      { id: "watchlist", status: "empty", lastHealthyAt: null, skipped: 0, values: [] },
-      { id: "portfolio", status: "empty", lastHealthyAt: null, skipped: 0, values: [] },
+      {
+        id: "watchlist",
+        status: "empty",
+        lastHealthyAt: null,
+        skipped: 0,
+        consecutiveFailures: 0,
+        stopped: false,
+        batches: { total: 0, successful: 0, failed: 0 },
+        values: [],
+      },
+      {
+        id: "portfolio",
+        status: "empty",
+        lastHealthyAt: null,
+        skipped: 0,
+        consecutiveFailures: 0,
+        stopped: false,
+        batches: { total: 0, successful: 0, failed: 0 },
+        values: [],
+      },
     ],
   };
 }
@@ -60,6 +93,8 @@ function renderDashboard() {
 }
 
 describe("MarketDashboard", () => {
+  beforeEach(() => localStorage.clear());
+
   it("적용 조회 주기와 시장 데이터를 표시한다", async () => {
     mockServer.use(
       http.get("/api/market/overview", () => HttpResponse.json(overview())),
@@ -109,5 +144,51 @@ describe("MarketDashboard", () => {
     candle.focus();
     await userEvent.keyboard("{Enter}");
     expect(candle).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("주요 지수는 최대 5년, 개별 종목은 최대 10년 기간을 제공한다", async () => {
+    mockServer.use(
+      http.get("/api/market/overview", () => HttpResponse.json(overview())),
+      http.get("/api/market/instruments/:exchange/:symbol", () =>
+        HttpResponse.json({ quote, range: null, interval: "1d", ohlcv: [] }),
+      ),
+    );
+    renderDashboard();
+
+    const periodSelector = await screen.findByRole("group", { name: "조회 기간" });
+    expect(periodSelector).toHaveTextContent("10년");
+    await userEvent.click(screen.getByRole("button", { name: "주요 지수 KOSPI KOSPI 선택" }));
+    await waitFor(() => {
+      const updatedPeriodSelector = screen.getByRole("group", { name: "조회 기간" });
+      expect(updatedPeriodSelector).toHaveTextContent("5년");
+      expect(updatedPeriodSelector).not.toHaveTextContent("7년");
+      expect(updatedPeriodSelector).not.toHaveTextContent("10년");
+    });
+  });
+
+  it("관심 종목 한도 초과 시 기존 데이터 유지와 삭제 방법을 안내한다", async () => {
+    const constrained = overview();
+    constrained.limits.watchlistMaxSymbols = 1;
+    localStorage.setItem(
+      "stock2:user-data",
+      JSON.stringify({
+        version: 1,
+        watchlist: [{ symbol: "MSFT", exchange: "XNAS", name: "Microsoft" }],
+        portfolios: [],
+        activePortfolioId: null,
+      }),
+    );
+    mockServer.use(
+      http.get("/api/market/overview", () => HttpResponse.json(constrained)),
+      http.get("/api/market/instruments/:exchange/:symbol", () =>
+        HttpResponse.json({ quote, range: null, interval: "1d", ohlcv: [] }),
+      ),
+    );
+    renderDashboard();
+
+    await userEvent.click(await screen.findByRole("button", { name: "관심 종목 추가" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("관심 종목은 최대 1개");
+    expect(screen.getByRole("alert")).toHaveTextContent("기존 종목을 제거");
+    expect(JSON.parse(localStorage.getItem("stock2:user-data") ?? "{}").watchlist).toHaveLength(1);
   });
 });

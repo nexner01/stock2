@@ -37,6 +37,9 @@ export type CollectionGroupRuntimeState = Readonly<{
   lastCompletedAt: Temporal.Instant | null;
   lastHealthyAt: Temporal.Instant | null;
   values: readonly QuoteSnapshot[];
+  lastBatchCount: number;
+  lastSuccessfulBatches: number;
+  lastFailedBatches: number;
   metrics: CollectionGroupMetrics;
 }>;
 
@@ -59,6 +62,9 @@ type MutableGroup = {
   lastCompletedAt: Temporal.Instant | null;
   lastHealthyAt: Temporal.Instant | null;
   values: QuoteSnapshot[];
+  lastBatchCount: number;
+  lastSuccessfulBatches: number;
+  lastFailedBatches: number;
   metrics: {
     attempts: number;
     successes: number;
@@ -143,6 +149,9 @@ export class FixedTimeCollectionEngine {
         lastCompletedAt: null,
         lastHealthyAt: null,
         values: [],
+        lastBatchCount: 0,
+        lastSuccessfulBatches: 0,
+        lastFailedBatches: 0,
         metrics: { attempts: 0, successes: 0, failures: 0, skipped: 0, partial: 0 },
         scheduled: null,
       });
@@ -180,6 +189,9 @@ export class FixedTimeCollectionEngine {
       lastCompletedAt: group.lastCompletedAt,
       lastHealthyAt: group.lastHealthyAt,
       values: [...group.values],
+      lastBatchCount: group.lastBatchCount,
+      lastSuccessfulBatches: group.lastSuccessfulBatches,
+      lastFailedBatches: group.lastFailedBatches,
       metrics: Object.freeze({ ...group.metrics }),
     });
   }
@@ -250,6 +262,9 @@ export class FixedTimeCollectionEngine {
     const instruments = group.definition.getInstruments();
     if (instruments.length === 0) {
       group.status = "empty";
+      group.lastBatchCount = 0;
+      group.lastSuccessfulBatches = 0;
+      group.lastFailedBatches = 0;
       group.lastCompletedAt = now;
       await this.repository.save({
         group: group.definition.id,
@@ -289,10 +304,14 @@ export class FixedTimeCollectionEngine {
     );
     timeout.cancel();
     const completedAt = this.clock.now();
+    const previousValues = group.values;
     const successes = settled.flatMap((result) =>
       result.status === "fulfilled" ? result.value : [],
     );
     const failureCount = settled.filter((result) => result.status === "rejected").length;
+    group.lastBatchCount = settled.length;
+    group.lastSuccessfulBatches = settled.length - failureCount;
+    group.lastFailedBatches = failureCount;
     group.inFlight = false;
     group.lastCompletedAt = completedAt;
     group.values = successes;
@@ -314,11 +333,13 @@ export class FixedTimeCollectionEngine {
       group.status = timedOut ? "delayed" : "failed";
       group.consecutiveFailures += 1;
       group.metrics.failures += 1;
+      group.values = previousValues;
       await this.persist(
         group,
         timedOut ? "delayed" : "failed",
         false,
         timedOut ? "timeout" : "provider-failure",
+        successes,
       );
       this.stopAfterRetryLimit(group);
     }
@@ -347,8 +368,9 @@ export class FixedTimeCollectionEngine {
     status: "healthy" | "partial" | "delayed" | "failed",
     validationSucceeded: boolean,
     diagnosticId: string | null,
+    values: readonly QuoteSnapshot[] = group.values,
   ): Promise<void> {
-    const marketTimestamp = group.values.reduce<Temporal.Instant | null>(
+    const marketTimestamp = values.reduce<Temporal.Instant | null>(
       (latest, value) =>
         !latest || Temporal.Instant.compare(value.marketTimestamp, latest) > 0
           ? value.marketTimestamp
@@ -360,7 +382,7 @@ export class FixedTimeCollectionEngine {
       status,
       marketTimestamp: marketTimestamp?.toString() ?? null,
       collectedAt: (group.lastCompletedAt ?? this.clock.now()).toString(),
-      payload: toPayload(group.values),
+      payload: toPayload(values),
       validationSucceeded,
       diagnosticId,
     });

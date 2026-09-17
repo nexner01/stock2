@@ -7,8 +7,13 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { HistoricalValueChart } from "@/components/charts/historical-value-chart";
+import { GroupStatusNotice } from "@/components/data-status";
 import { Panel } from "@/components/panel";
-import { canAdd, LocalUserDataRepository } from "@/composition/browser-user-data";
+import {
+  canAdd,
+  LocalUserDataRepository,
+  syncMarketSubscriptions,
+} from "@/composition/browser-user-data";
 import {
   exchangeRateDtoSchema,
   instrumentDetailDtoSchema,
@@ -102,6 +107,13 @@ export function PortfolioDashboard() {
     return { holding, quote, value, failed: detailQueries[index]?.isError ?? false };
   });
   const total = rows.reduce((sum, row) => (row.value ? sum.plus(row.value) : sum), new Decimal(0));
+  const portfolioGroup = overview.data?.groups.find(({ id }) => id === "portfolio");
+
+  async function retryPortfolioGroup() {
+    const response = await fetch("/api/market/groups/portfolio/retry", { method: "POST" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await overview.refetch();
+  }
 
   function persist(next: UserData, firstSave = false) {
     if (
@@ -112,6 +124,7 @@ export function PortfolioDashboard() {
     )
       return false;
     new LocalUserDataRepository(localStorage).save(next);
+    void syncMarketSubscriptions(next);
     setData(next);
     return true;
   }
@@ -202,6 +215,7 @@ export function PortfolioDashboard() {
     )
       return;
     new LocalUserDataRepository(localStorage).clear();
+    void syncMarketSubscriptions(initial);
     setData(initial);
   }
 
@@ -234,6 +248,14 @@ export function PortfolioDashboard() {
             </span>
           </div>
         </Panel>
+        {portfolioGroup && overview.data ? (
+          <GroupStatusNotice
+            group={portfolioGroup}
+            pollIntervalSeconds={overview.data.pollIntervalSeconds}
+            timeoutSeconds={overview.data.provider.requestTimeoutSeconds}
+            onRetry={retryPortfolioGroup}
+          />
+        ) : null}
         <div className="portfolio-layout">
           <Panel className="holdings-panel">
             <div className="panel-heading">

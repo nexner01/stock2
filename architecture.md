@@ -1,6 +1,6 @@
 # Stock2 아키텍처와 파일 역할
 
-이 문서는 M4 완료 시점의 코드 지도를 제공한다. 제품 요구사항은
+이 문서는 M9 최종 수용 검증 시점의 코드 지도를 제공한다. 제품 요구사항은
 `memory-bank/product-design-document.md`, 개발 순서와 완료 기준은
 `memory-bank/implementation-plan.md`, 실제 완료 내역은 `memory-bank/progress.md`를 기준으로 한다.
 
@@ -326,7 +326,44 @@ localStorage에는 식별자·표시명·수량만 저장한다. 가격, 환율,
 선택하고, 조립 서비스는 원인을 분류 가능한 최소 타입만 로그에 남긴다. 이로써 사용자 응답과 서버 로그를
 같은 ID로 연결하면서 내부 예외 문자열과 민감 payload가 브라우저에 노출되지 않는다.
 
-## 16. 변경 시 점검 순서
+## 16. M9 추가 파일 역할과 통찰
+
+| 파일                                                 | 역할                                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| `scripts/validate-provider.ts`                       | 2초·5초 스모크와 최대 구성 1시간 안정성의 배치·지연·메모리 지표 수집    |
+| `scripts/validate-performance.ts`                    | 실행 중인 production 서버의 첫 화면·검색·필터·정렬 목표를 Chrome로 측정 |
+| `src/app/api/market/subscriptions/route.ts`          | 저장 종목 식별자만 서버 메모리의 두 자동 조회 그룹에 동기화             |
+| `src/app/api/market/groups/[group]/retry/route.ts`   | 실패한 한 그룹의 카운터·중단 상태만 초기화하는 HTTP adapter             |
+| `src/app/api/market/groups/reset/route.ts`           | 브라우저 전체 새로고침 시 네 그룹 상태를 함께 초기화                    |
+| `src/components/data-status/group-status-notice.tsx` | 부분·지연·오래됨·실패의 영향, 기준 시각, 설정과 복구 동작 표시          |
+| `src/components/charts/observed-gaps.ts`             | 휴장과 공급원 누락을 단정하지 않고 시계열 관측 공백을 찾는 도구         |
+| `docs/acceptance-matrix.md`                          | AC-01~AC-29를 자동 테스트·실측·후속 설계 경계에 연결한 최종 추적표      |
+| `docs/validation/provider-smoke-candidate.json`      | 5초 운영 후보 설정의 1분 실공급원 원본 결과                             |
+| `docs/validation/provider-stability.json`            | 최대 구성 2초 주기의 1시간 오류율·429·연결 회복·메모리 원본 결과        |
+| `docs/validation/app-performance.json`               | 로컬 production 서버와 Chrome에서 측정한 성능 목표 원본 결과            |
+
+실공급원 스모크와 안정성 검증은 애플리케이션 도메인 테스트를 대체하지 않는다. 전자는 특정 시각의 Yahoo
+응답성과 로컬 프로세스 특성을 관찰하고, 후자는 fake clock으로 timeout·skip·중단·장 재개 분기를
+결정론적으로 검증한다. 두 증거를 분리해야 외부 상태 변화가 제품 상태 머신의 회귀로 오인되지 않는다.
+같은 이유로 성능 측정은 시장 첫 화면·검색·필터의 실제 서버 흐름과 추천 정렬의 계약 fixture 흐름을
+구분한다. 정렬 UI 목표에 장기 OHLCV 수집 시간을 섞지 않되 원본 결과에는 측정 방식을 명시한다.
+
+기간 한도는 provider의 최대 조회 가능 기간과 동일하지 않다. 공급원이 10년 데이터를 반환하더라도 주요
+지수 UI는 PDD의 기능 경계인 5년까지만 제공하고, 개별 종목과 포트폴리오 분석만 10년을 제공한다. 따라서
+기간 버튼과 route 입력은 제품 정책으로 취급하고 공급원 capability에서 자동 확장하지 않는다.
+
+관심 종목과 포트폴리오는 계속 브라우저 localStorage가 소유한다. 서버 자동 조회에는 이름·수량·포트폴리오
+내용 전체를 저장하지 않고 `{ symbol, exchange }`만 현재 프로세스 메모리에 전달한다. 따라서 서버
+재시작 후에는 클라이언트가 다시 동기화하며, 설정 한도 축소도 브라우저 저장 데이터를 삭제하지 않는다.
+전체 실패 때 수집 엔진은 화면에 마지막 정상값을 유지하지만 새 실패 run의 payload에는 이전 값을 넣지
+않아 최신 실패와 정상 snapshot의 의미를 섞지 않는다.
+
+서버 조립 경계의 공급원 준비 Promise는 실패하면 캐시를 비워 다음 요청이 다시 초기화를 시도할 수 있게
+한다. 브라우저 새로고침에서는 그룹 상태를 먼저 초기화하고 로컬 식별자 구독을 다시 동기화한 뒤 Query를
+무효화한다. 이 순서로 서버 재시작·일시 공급원 실패·브라우저 새로고침이 영구적인 실패 캐시나 빈 구독으로
+고착되는 것을 막는다.
+
+## 17. 변경 시 점검 순서
 
 1. 제품 의미가 바뀌면 PDD와 관련 ADR을 먼저 갱신한다.
 2. 도메인 타입·순수 계산을 만들고 application port/use case를 연결한다.

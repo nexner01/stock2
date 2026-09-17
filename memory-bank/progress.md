@@ -1,6 +1,6 @@
 # Stock2 구현 진행 기록
 
-최종 갱신: 2026-09-16
+최종 갱신: 2026-09-17
 
 ## 단계 상태
 
@@ -15,7 +15,7 @@
 | M6 — 관심 종목·포트폴리오           | 완료 | versioned localStorage, 관심 종목, 원화 평가, 저장·삭제 확인, E2E·시각 QA                    |
 | M7 — 과거 추정 가치·추천 백테스트   | 완료 | 공통 시작일, 과거 환율, 4개 추천안, 월별 리밸런싱, 복사·덮어쓰기 보호                        |
 | M8 — 신뢰성·접근성·디자인 완성      | 완료 | 진단 ID, 상태 8종, 키보드·200%·모바일·overflow·axe·최종 디자인 QA                            |
-| M9                                  | 대기 | 부하·안정성·최종 수용 검증                                                                   |
+| M9 — 부하·안정성·최종 수용 검증     | 완료 | 2초·5초 스모크, 1시간 안정성, 성능 목표와 AC-01~29를 검증함                                  |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -350,6 +350,55 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 - 상태 테스트: `src/components/data-status/status-badge.test.tsx`
 - 반응형 검증: `tests/e2e/smoke.spec.ts`, `docs/validation/m8-*.png`
 
+## M9 — 부하, 안정성과 최종 수용 검증
+
+상태: 완료
+
+### 수행한 작업
+
+- 브라우저 관심 종목·활성 포트폴리오의 식별자만 서버 메모리 구독에 동기화해 실제 네 그룹 자동 수집을
+  연결했다. 이름·수량·포트폴리오 내용은 서버에 저장하거나 로그로 남기지 않는다.
+- 전체 수집 실패 때 화면에는 마지막 정상값을 유지하되 실패 run payload에는 실패 회차 결과만 저장해
+  최신 실패와 정상 snapshot을 분리했다.
+- 부분 배치, timeout·skip, 마지막 정상 시각, 연속 실패·중단과 그룹별 다시 시도를 화면에 표시하고,
+  브라우저 새로고침 전체 초기화 API와 E2E를 추가했다.
+- 주요 지수의 최대 기간을 5년으로 제한하고 개별 종목·포트폴리오는 10년을 유지했다. 관측 공백과 실제
+  데이터 범위·간격·통화를 표시하며 값을 보간하지 않는다.
+- 깨끗한 DB뿐 아니라 M1 fixture DB에서 최신 migration 적용 후 기존 metadata 보존을 검증했다.
+- AC-01~AC-29 수용 추적표와 공급원·성능 측정 스크립트, README·ADR·아키텍처 문서를 동기화했다.
+
+### 실측 결과
+
+- 2초 기본 스모크: 네 그룹 30/30회 성공, delayed·skip·HTTP 429 모두 0회.
+- 5초 후보 스모크: 네 그룹 12/12회 성공, delayed·skip·HTTP 429 모두 0회.
+- 1시간 안정성: 정확히 3,600.004초, 최대 관심 종목 20개/포트폴리오 10개. 주요 지수 1,797/1,798회
+  성공, timeout 1회·skip 2회·연결 회복 1회·오류율 0.06%. 다른 세 그룹은 1,800/1,800회 성공했다.
+  전체 HTTP 429와 처리되지 않은 예외는 0회였다.
+- 메모리: RSS 79.4MB → 188.2MB, 최대 200.5MB. heap 17.5MB → 29.6MB, 최대 71.7MB. 마지막 10분
+  RSS는 약 2.4MB 감소해 실행 후반의 지속 상승은 관찰되지 않았다.
+- 프로덕션 Chrome: 첫 화면 434.93ms, 검색 939.74ms, 필터 47.11ms, 정렬 15.05ms로 각각 5초/1초
+  목표를 충족했다. 정렬은 외부 장기 수집과 분리한 계약 fixture로 클라이언트 반영 시간만 측정했다.
+
+### 검증 결과
+
+| 명령                                                       | 결과                                             |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| `pnpm provider:smoke`                                      | 통과: 2초 주기 60초, 네 그룹 delayed·skip 0      |
+| `pnpm provider:smoke:candidate`                            | 통과: 5초 주기 60초, 네 그룹 delayed·skip 0      |
+| `pnpm provider:stability`                                  | 통과: 1시간 완료, 429·처리되지 않은 예외 0       |
+| `validate-performance.ts --base-url http://127.0.0.1:3100` | 통과: 첫 화면·검색·필터·정렬 목표 충족           |
+| `pnpm validate`                                            | 통과: 21개 파일 116개 테스트, 계층·순환 위반 0건 |
+| `pnpm test:e2e`                                            | 통과: 핵심 흐름·복구·접근성 5/5                  |
+| `pnpm build`                                               | 통과: 정적 3개 화면과 동적 API 9개               |
+
+### 구현·증거 경로
+
+- 수용 추적: `docs/acceptance-matrix.md`
+- 공급원 결과: `docs/validation/provider-smoke*.json`, `docs/validation/provider-stability.json`
+- 성능 결과: `docs/validation/app-performance.json`
+- 상태·복구: `src/components/data-status/group-status-notice.tsx`, `src/app/api/market/groups/**`
+- 구독 동기화: `src/composition/browser-user-data.ts`, `src/app/api/market/subscriptions/route.ts`
+
 ## 다음 개발자 참고
 
 1. M6의 localStorage repository는 React 컴포넌트가 직접 저장소 API를 호출하지 않도록 feature hook 뒤에 둔다.
@@ -357,4 +406,5 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
    소유한다고 가정하지 말고 명시적 요청 계약으로 전달한다.
 3. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
    PDD/ADR에 근거를 추가한다.
-4. `docs/validation/*`은 2026-09-16 단일 환경의 증거이며 SLA가 아니다. M9에서 다시 측정한다.
+4. `docs/validation/*`은 2026-09-16~17 단일 환경의 증거이며 공급원 SLA가 아니다. 외부 공개 전 데이터
+   라이선스와 정식 공급원, 장시간 관찰을 다시 검토한다.

@@ -257,6 +257,32 @@ describe("FixedTimeCollectionEngine", () => {
     expect(engine.state("popular").metrics.successes).toBe(4);
   });
 
+  it("keeps the last healthy values visible after a full failure without writing them as a new result", async () => {
+    const clock = new FakeClockScheduler();
+    const provider = new FakeProvider(clock);
+    const repository = new MemorySnapshotRepository();
+    const engine = createEngine(
+      clock,
+      provider,
+      repository,
+      definitions({ indices: [createInstrumentId("KOSPI", "XKRX")] }),
+    );
+
+    engine.start();
+    await clock.advanceTo(0);
+    provider.quoteHandler = () => Promise.reject(new Error("provider unavailable"));
+    await clock.advanceTo(2);
+
+    expect(engine.state("indices").values).toHaveLength(1);
+    expect(engine.state("indices").status).toBe("failed");
+    expect(engine.state("indices").lastHealthyAt?.toString()).toBe("2026-09-16T00:00:00Z");
+    expect(repository.saved.filter(({ group }) => group === "indices").at(-1)).toMatchObject({
+      status: "failed",
+      payload: { values: [] },
+      validationSucceeded: false,
+    });
+  });
+
   it("keeps successful batches on partial failure and resets failures after recovery", async () => {
     const clock = new FakeClockScheduler();
     const provider = new FakeProvider(clock);

@@ -86,17 +86,27 @@ test("200% 확대 등가 폭과 모바일에서 핵심 흐름이 잘림 없이 �
 });
 
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/market/subscriptions", async (route) =>
+    route.fulfill({ json: { watchlist: 0, portfolio: 0 } }),
+  );
+  await page.route("**/api/market/groups/**", async (route) =>
+    route.fulfill({ json: { status: "ok" } }),
+  );
   await page.route("**/api/market/overview", async (route) =>
     route.fulfill({
       json: {
         pollIntervalSeconds: 2,
         limits: { watchlistMaxSymbols: 20, portfolioMaxSymbols: 10 },
+        provider: { requestTimeoutSeconds: 5, batchSize: 10, maxSymbolsPerRequest: 10 },
         groups: [
           {
             id: "indices",
             status: "healthy",
             lastHealthyAt: quote.collectedAt,
             skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 1, successful: 1, failed: 0 },
             values: [quote],
           },
           {
@@ -104,10 +114,31 @@ test.beforeEach(async ({ page }) => {
             status: "healthy",
             lastHealthyAt: quote.collectedAt,
             skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 1, successful: 1, failed: 0 },
             values: [quote],
           },
-          { id: "watchlist", status: "empty", lastHealthyAt: null, skipped: 0, values: [] },
-          { id: "portfolio", status: "empty", lastHealthyAt: null, skipped: 0, values: [] },
+          {
+            id: "watchlist",
+            status: "empty",
+            lastHealthyAt: null,
+            skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 0, successful: 0, failed: 0 },
+            values: [],
+          },
+          {
+            id: "portfolio",
+            status: "empty",
+            lastHealthyAt: null,
+            skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 0, successful: 0, failed: 0 },
+            values: [],
+          },
         ],
       },
     }),
@@ -209,6 +240,75 @@ test("시장 탐색 흐름과 중대 접근성 위반이 없다", async ({ page 
     ({ impact }) => impact === "serious" || impact === "critical",
   );
   expect(seriousViolations).toEqual([]);
+});
+
+test("지연 그룹만 다시 시도하고 새로고침 시 전체 그룹을 초기화한다", async ({ page }) => {
+  await page.unroute("**/api/market/overview");
+  await page.route("**/api/market/overview", async (route) =>
+    route.fulfill({
+      json: {
+        pollIntervalSeconds: 2,
+        limits: { watchlistMaxSymbols: 20, portfolioMaxSymbols: 10 },
+        provider: { requestTimeoutSeconds: 5, batchSize: 10, maxSymbolsPerRequest: 10 },
+        groups: [
+          {
+            id: "indices",
+            status: "delayed",
+            lastHealthyAt: quote.collectedAt,
+            skipped: 2,
+            consecutiveFailures: 1,
+            stopped: false,
+            batches: { total: 1, successful: 0, failed: 1 },
+            values: [quote],
+          },
+          {
+            id: "popular",
+            status: "healthy",
+            lastHealthyAt: quote.collectedAt,
+            skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 1, successful: 1, failed: 0 },
+            values: [quote],
+          },
+          {
+            id: "watchlist",
+            status: "empty",
+            lastHealthyAt: null,
+            skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 0, successful: 0, failed: 0 },
+            values: [],
+          },
+          {
+            id: "portfolio",
+            status: "empty",
+            lastHealthyAt: null,
+            skipped: 0,
+            consecutiveFailures: 0,
+            stopped: false,
+            batches: { total: 0, successful: 0, failed: 0 },
+            values: [],
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.getByRole("status").filter({ hasText: "5초 타임아웃" })).toBeVisible();
+
+  const retryRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/market/groups/indices/retry"),
+  );
+  await page.getByRole("button", { name: "이 그룹 다시 시도" }).click();
+  await retryRequest;
+
+  const resetRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/market/groups/reset"),
+  );
+  await page.reload();
+  await resetRequest;
 });
 
 test("포트폴리오는 저장 확인 후 새로고침에도 유지되고 삭제 취소는 무변경이다", async ({ page }) => {

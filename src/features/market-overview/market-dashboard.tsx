@@ -7,9 +7,13 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { MarketChart } from "@/components/charts/market-chart";
-import { StatusBadge } from "@/components/data-status/status-badge";
+import { GroupStatusNotice, StatusBadge } from "@/components/data-status";
 import { Panel } from "@/components/panel";
-import { canAdd, LocalUserDataRepository } from "@/composition/browser-user-data";
+import {
+  canAdd,
+  LocalUserDataRepository,
+  syncMarketSubscriptions,
+} from "@/composition/browser-user-data";
 import {
   instrumentDetailDtoSchema,
   instrumentSearchDtoSchema,
@@ -32,6 +36,10 @@ const periods: readonly { id: Period; label: string }[] = [
   { id: "7y", label: "7년" },
   { id: "10y", label: "10년" },
 ];
+const majorIndexSymbols = new Set(["KOSPI", "KOSDAQ", "NASDAQ", "SP500"]);
+
+const isMajorIndex = (instrument: SelectedInstrument): boolean =>
+  majorIndexSymbols.has(instrument.symbol);
 
 async function readJson<T>(
   input: RequestInfo,
@@ -111,7 +119,14 @@ export function MarketDashboard() {
 
   function selectInstrument(instrument: SelectedInstrument) {
     setSelected(instrument);
+    if (isMajorIndex(instrument) && (period === "7y" || period === "10y")) setPeriod("5y");
     setSearchTerm("");
+  }
+
+  async function retryGroup(group: MarketOverviewDto["groups"][number]["id"]) {
+    const response = await fetch(`/api/market/groups/${group}/retry`, { method: "POST" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await overview.refetch();
   }
 
   return (
@@ -183,11 +198,20 @@ export function MarketDashboard() {
             {indices ? <StatusBadge status={indices.status} /> : null}
           </div>
           {overview.isError ? <ErrorCard onRetry={() => void overview.refetch()} /> : null}
+          {indices && overview.data ? (
+            <GroupStatusNotice
+              group={indices}
+              pollIntervalSeconds={overview.data.pollIntervalSeconds}
+              timeoutSeconds={overview.data.provider.requestTimeoutSeconds}
+              onRetry={() => retryGroup(indices.id)}
+            />
+          ) : null}
           <div className="index-grid">
             {(indices?.values ?? []).map((item) => (
               <button
                 className="index-card"
                 key={`${item.exchange}:${item.symbol}`}
+                aria-label={`주요 지수 ${item.name} ${item.symbol} 선택`}
                 onClick={() => selectInstrument(item)}
               >
                 <span className="index-card__top">
@@ -225,8 +249,15 @@ export function MarketDashboard() {
               onChartType={setChartType}
               onRetry={() => void detail.refetch()}
               watchlistLimit={overview.data?.limits.watchlistMaxSymbols}
+              indexSelected={isMajorIndex(selected)}
             />
-            <PopularTable data={popular} onSelect={selectInstrument} />
+            <PopularTable
+              data={popular}
+              pollIntervalSeconds={overview.data?.pollIntervalSeconds}
+              timeoutSeconds={overview.data?.provider.requestTimeoutSeconds}
+              onRetry={retryGroup}
+              onSelect={selectInstrument}
+            />
           </div>
           <aside className="market-side-column" aria-label="시장 보조 정보">
             <Panel className="watchlist-panel">
@@ -237,6 +268,14 @@ export function MarketDashboard() {
                 </div>
                 <Star aria-hidden="true" size={18} />
               </div>
+              {watchlist && overview.data ? (
+                <GroupStatusNotice
+                  group={watchlist}
+                  pollIntervalSeconds={overview.data.pollIntervalSeconds}
+                  timeoutSeconds={overview.data.provider.requestTimeoutSeconds}
+                  onRetry={() => retryGroup(watchlist.id)}
+                />
+              ) : null}
               {watchlist?.values.length ? (
                 watchlist.values.map((item) => (
                   <button
@@ -299,6 +338,7 @@ function InstrumentPanel({
   onChartType,
   onRetry,
   watchlistLimit,
+  indexSelected,
 }: Readonly<{
   detail: InstrumentDetailDto | undefined;
   isPending: boolean;
@@ -309,7 +349,12 @@ function InstrumentPanel({
   onChartType(value: "line" | "candle"): void;
   onRetry(): void;
   watchlistLimit: number | undefined;
+  indexSelected: boolean;
 }>) {
+  const availablePeriods = indexSelected
+    ? periods.filter(({ id }) => id !== "7y" && id !== "10y")
+    : periods;
+
   return (
     <Panel className="chart-panel">
       {isPending ? (
@@ -337,8 +382,8 @@ function InstrumentPanel({
             </div>
           </div>
           <div className="chart-controls">
-            <div className="segmented" aria-label="조회 기간">
-              {periods.map((item) => (
+            <div className="segmented" role="group" aria-label="조회 기간">
+              {availablePeriods.map((item) => (
                 <button
                   aria-pressed={period === item.id}
                   key={item.id}
@@ -348,7 +393,7 @@ function InstrumentPanel({
                 </button>
               ))}
             </div>
-            <div className="segmented" aria-label="차트 유형">
+            <div className="segmented" role="group" aria-label="차트 유형">
               <button aria-pressed={chartType === "line"} onClick={() => onChartType("line")}>
                 <LineChart size={15} />
                 라인
@@ -379,6 +424,7 @@ function WatchlistButton({
   limit,
 }: Readonly<{ detail: InstrumentDetailDto; limit: number | undefined }>) {
   const [included, setIncluded] = useState(false);
+  const [notice, setNotice] = useState("");
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -396,19 +442,31 @@ function WatchlistButton({
   }, [detail.quote.exchange, detail.quote.symbol]);
 
   function toggle() {
+    setNotice("");
     const repository = new LocalUserDataRepository(localStorage);
     const data = repository.load();
     if (included) {
-      repository.save({
+      const next = {
         ...data,
         watchlist: data.watchlist.filter(
           (item) => item.symbol !== detail.quote.symbol || item.exchange !== detail.quote.exchange,
         ),
-      });
+      };
+      repository.save(next);
+      void syncMarketSubscriptions(next);
       setIncluded(false);
       return;
     }
-    if (!limit || !canAdd(data.watchlist.length, limit)) return;
+    if (!limit) {
+      setNotice("적용 관심 종목 한도를 확인한 뒤 다시 시도해 주세요.");
+      return;
+    }
+    if (!canAdd(data.watchlist.length, limit)) {
+      setNotice(
+        `관심 종목은 최대 ${limit}개입니다. 기존 종목을 제거한 뒤 다시 추가해 주세요. 현재 저장된 종목은 유지됩니다.`,
+      );
+      return;
+    }
     if (
       !data.watchlist.length &&
       !data.portfolios.length &&
@@ -417,29 +475,40 @@ function WatchlistButton({
       )
     )
       return;
-    repository.save({
+    const next = {
       ...data,
       watchlist: [
         ...data.watchlist,
         { symbol: detail.quote.symbol, exchange: detail.quote.exchange, name: detail.quote.name },
       ],
-    });
+    };
+    repository.save(next);
+    void syncMarketSubscriptions(next);
     setIncluded(true);
   }
 
   return (
-    <button className="watchlist-action" type="button" aria-pressed={included} onClick={toggle}>
-      <Star size={14} fill={included ? "currentColor" : "none"} />
-      {included ? "관심 종목 제거" : "관심 종목 추가"}
-    </button>
+    <div>
+      <button className="watchlist-action" type="button" aria-pressed={included} onClick={toggle}>
+        <Star size={14} fill={included ? "currentColor" : "none"} />
+        {included ? "관심 종목 제거" : "관심 종목 추가"}
+      </button>
+      {notice ? <p role="alert">{notice}</p> : null}
+    </div>
   );
 }
 
 function PopularTable({
   data,
+  pollIntervalSeconds,
+  timeoutSeconds,
+  onRetry,
   onSelect,
 }: Readonly<{
   data: MarketOverviewDto["groups"][number] | undefined;
+  pollIntervalSeconds: number | undefined;
+  timeoutSeconds: number | undefined;
+  onRetry(group: MarketOverviewDto["groups"][number]["id"]): Promise<void>;
   onSelect(value: SelectedInstrument): void;
 }>) {
   return (
@@ -451,6 +520,14 @@ function PopularTable({
         </div>
         {data ? <StatusBadge status={data.status} /> : null}
       </div>
+      {data && pollIntervalSeconds && timeoutSeconds ? (
+        <GroupStatusNotice
+          group={data}
+          pollIntervalSeconds={pollIntervalSeconds}
+          timeoutSeconds={timeoutSeconds}
+          onRetry={() => onRetry(data.id)}
+        />
+      ) : null}
       <div className="table-scroll">
         <table>
           <thead>

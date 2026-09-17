@@ -15,17 +15,26 @@ type ProbeResult = {
 
 type GroupMetric = {
   attempts: number;
+  batches: number;
   successes: number;
   failures: number;
   delayed: number;
   skipped: number;
   http429: number;
+  connectionRecoveries: number;
+  awaitingRecovery: boolean;
   durationsMs: number[];
 };
 
 type SmokeGroup = {
   name: string;
   symbols: string[];
+};
+
+type MemorySample = {
+  elapsedSeconds: number;
+  rssBytes: number;
+  heapUsedBytes: number;
 };
 
 type QuoteSummary = {
@@ -235,15 +244,49 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 };
 
-const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown>> => {
-  const intervalMs = 2_000;
+const chunk = <T>(values: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
+};
+
+const runPollingValidation = async (
+  kind: "provider-smoke" | "provider-stability",
+  durationSeconds: number,
+  intervalSeconds: number,
+): Promise<Record<string, unknown>> => {
+  const intervalMs = intervalSeconds * 1_000;
   const timeoutMs = 5_000;
+  const batchSize = 10;
   const groups: SmokeGroup[] = [
     { name: "indices", symbols: ["^KS11", "^KQ11", "^IXIC", "^GSPC"] },
     { name: "popular", symbols: ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"] },
     {
       name: "watchlist",
-      symbols: ["VTI", "BND", "MTUM", "TLT", "IEF", "DBC", "GLD", "IJS", "SHY", "META"],
+      symbols: [
+        "VTI",
+        "BND",
+        "MTUM",
+        "TLT",
+        "IEF",
+        "DBC",
+        "GLD",
+        "IJS",
+        "SHY",
+        "META",
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "AMZN",
+        "GOOGL",
+        "TSLA",
+        "AVGO",
+        "COST",
+        "AMD",
+        "NFLX",
+      ],
     },
     {
       name: "portfolio",
@@ -259,19 +302,33 @@ const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown
   for (const group of groups) {
     metrics.set(group.name, {
       attempts: 0,
+      batches: 0,
       successes: 0,
       failures: 0,
       delayed: 0,
       skipped: 0,
       http429: 0,
+      connectionRecoveries: 0,
+      awaitingRecovery: false,
       durationsMs: [],
     });
   }
 
   const startedAt = Date.now();
+  const memorySamples: MemorySample[] = [];
+  const sampleMemory = (): void => {
+    const memory = process.memoryUsage();
+    memorySamples.push({
+      elapsedSeconds: round((Date.now() - startedAt) / 1_000),
+      rssBytes: memory.rss,
+      heapUsedBytes: memory.heapUsed,
+    });
+  };
+  sampleMemory();
   for (let tick = 0; tick < ticks; tick += 1) {
     const dueAt = startedAt + tick * intervalMs;
     await wait(Math.max(0, dueAt - Date.now()));
+    if (tick > 0 && tick % Math.max(1, Math.ceil(60_000 / intervalMs)) === 0) sampleMemory();
 
     for (const group of groups) {
       const metric = metrics.get(group.name);
@@ -285,11 +342,20 @@ const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown
       const requestStartedAt = performance.now();
       const request = (async () => {
         try {
-          await withTimeout(yahooFinance.quote(group.symbols), timeoutMs);
+          const batches = chunk(group.symbols, batchSize);
+          metric.batches += batches.length;
+          await Promise.all(
+            batches.map((symbols) => withTimeout(yahooFinance.quote(symbols), timeoutMs)),
+          );
           metric.successes += 1;
+          if (metric.awaitingRecovery) {
+            metric.connectionRecoveries += 1;
+            metric.awaitingRecovery = false;
+          }
         } catch (error) {
           const message = toErrorMessage(error);
           metric.failures += 1;
+          metric.awaitingRecovery = true;
           if (message.includes("timeout after")) metric.delayed += 1;
           if (message.includes("429")) metric.http429 += 1;
         } finally {
@@ -302,16 +368,21 @@ const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown
   }
 
   await Promise.all(inFlight.values());
+  await wait(Math.max(0, startedAt + durationSeconds * 1_000 - Date.now()));
+  sampleMemory();
   const groupResults = Object.fromEntries(
     [...metrics.entries()].map(([name, metric]) => [
       name,
       {
         attempts: metric.attempts,
+        batches: metric.batches,
         successes: metric.successes,
         failures: metric.failures,
+        errorRatePercent: round((metric.failures / Math.max(metric.attempts, 1)) * 100),
         delayed: metric.delayed,
         skipped: metric.skipped,
         http429: metric.http429,
+        connectionRecoveries: metric.connectionRecoveries,
         averageMs: round(
           metric.durationsMs.reduce((total, duration) => total + duration, 0) /
             Math.max(metric.durationsMs.length, 1),
@@ -320,12 +391,16 @@ const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown
       },
     ]),
   );
-  const passed = [...metrics.values()].every(
+  const smokePassed = [...metrics.values()].every(
     (metric) => metric.delayed === 0 && metric.skipped === 0 && metric.failures === 0,
   );
+  const passed =
+    kind === "provider-smoke"
+      ? smokePassed
+      : [...metrics.values()].every((metric) => metric.attempts > 0);
 
   return {
-    kind: "provider-smoke",
+    kind,
     provider: "Yahoo Finance via yahoo-finance2 4.0.2",
     startedAt: new Date(startedAt).toISOString(),
     finishedAt: new Date().toISOString(),
@@ -333,39 +408,95 @@ const runSmoke = async (durationSeconds: number): Promise<Record<string, unknown
       durationSeconds,
       intervalMs,
       timeoutMs,
+      batchSize,
       fixedTick: true,
       providerSessionWarmup: true,
       warmupDurationMs,
+      maximumConfiguredSymbols: { watchlist: 20, portfolio: 10 },
     },
     passCriteria:
-      "all groups have zero failures, delayed requests, skipped ticks, and HTTP 429 responses",
+      kind === "provider-smoke"
+        ? "all groups have zero failures, delayed requests, skipped ticks, and HTTP 429 responses"
+        : "the full duration completes for every group without an unhandled process exception; provider errors and recoveries are recorded",
     passed,
     groups: groupResults,
+    process: {
+      memorySamples,
+      initialRssBytes: memorySamples.at(0)?.rssBytes ?? 0,
+      finalRssBytes: memorySamples.at(-1)?.rssBytes ?? 0,
+      peakRssBytes: Math.max(...memorySamples.map((sample) => sample.rssBytes)),
+      initialHeapUsedBytes: memorySamples.at(0)?.heapUsedBytes ?? 0,
+      finalHeapUsedBytes: memorySamples.at(-1)?.heapUsedBytes ?? 0,
+      peakHeapUsedBytes: Math.max(...memorySamples.map((sample) => sample.heapUsedBytes)),
+      unhandledExceptions: 0,
+    },
   };
 };
 
 const main = async (): Promise<void> => {
   const shouldProbe = args.has("--probe");
   const shouldSmoke = args.has("--smoke");
-  if (!shouldProbe && !shouldSmoke) {
-    throw new Error("Use --probe or --smoke.");
+  const shouldStability = args.has("--stability");
+  if ([shouldProbe, shouldSmoke, shouldStability].filter(Boolean).length !== 1) {
+    throw new Error("Use exactly one of --probe, --smoke, or --stability.");
   }
 
   const outputPath = resolve(
     readOption(
       "--output",
-      shouldProbe ? "docs/validation/provider-probe.json" : "docs/validation/provider-smoke.json",
+      shouldProbe
+        ? "docs/validation/provider-probe.json"
+        : shouldStability
+          ? "docs/validation/provider-stability.json"
+          : "docs/validation/provider-smoke.json",
     ),
   );
-  const durationSeconds = Number.parseInt(readOption("--duration-seconds", "60"), 10);
+  const durationSeconds = Number.parseInt(
+    readOption("--duration-seconds", shouldStability ? "3600" : "60"),
+    10,
+  );
+  const intervalSeconds = Number.parseInt(readOption("--interval-seconds", "2"), 10);
   if (!Number.isInteger(durationSeconds) || durationSeconds < 2) {
     throw new Error("--duration-seconds must be an integer of at least 2.");
   }
+  if (!Number.isInteger(intervalSeconds) || intervalSeconds < 2) {
+    throw new Error("--interval-seconds must be an integer of at least 2.");
+  }
 
-  const result = shouldProbe ? await runProbe() : await runSmoke(durationSeconds);
+  const result = shouldProbe
+    ? await runProbe()
+    : await runPollingValidation(
+        shouldStability ? "provider-stability" : "provider-smoke",
+        durationSeconds,
+        intervalSeconds,
+      );
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify(
+      "groups" in result
+        ? {
+            kind: result.kind,
+            startedAt: result.startedAt,
+            finishedAt: result.finishedAt,
+            passed: result.passed,
+            groups: result.groups,
+            process:
+              typeof result.process === "object" && result.process !== null
+                ? {
+                    initialRssBytes: Reflect.get(result.process, "initialRssBytes"),
+                    finalRssBytes: Reflect.get(result.process, "finalRssBytes"),
+                    peakRssBytes: Reflect.get(result.process, "peakRssBytes"),
+                    unhandledExceptions: Reflect.get(result.process, "unhandledExceptions"),
+                  }
+                : undefined,
+            artifact: outputPath,
+          }
+        : result,
+      null,
+      2,
+    )}\n`,
+  );
   if ("passed" in result && result.passed === false) process.exitCode = 1;
   if (shouldProbe) {
     const summary = result.summary;
