@@ -44,7 +44,8 @@ Yahoo는 Finance 정보를 재배포하지 말라고 명시하며, `yahoo-financ
 - Yahoo 과거 데이터와 라이선스별 다운로드 제한: <https://help.yahoo.com/kb/sln2311.html>
 - `yahoo-finance2` 비공식 API 및 서버 실행 제약: <https://github.com/gadicc/yahoo-finance2>
 - 검증 결과: `docs/validation/provider-probe.json`, `docs/validation/provider-smoke.json`,
-  `docs/validation/provider-smoke-candidate.json`, `docs/validation/provider-stability.json`
+  `docs/validation/provider-smoke-candidate.json`, `docs/validation/provider-stability.json`,
+  `docs/validation/provider-market-session-2026-09-18.json`
 
 ## 후속 조건
 
@@ -55,3 +56,6 @@ Yahoo는 Finance 정보를 재배포하지 말라고 명시하며, `yahoo-financ
   산출물에 고정했다. 주요 지수에서 timeout 1회와 skip 2회 뒤 연결 회복 1회가 있었고, 다른 세 그룹은
   1,800/1,800회 성공했으며 429와 처리되지 않은 예외는 0회였다. 이 측정은 공급원 SLA가 아니므로 외부
   공개 전 공급원 결정은 다시 검토한다.
+- 2026-09-18 장중 6시간 30분 추가 측정은 총 46,778회 중 46,775회 성공했다. 일시 실패 3회는 모두
+  연결 회복됐고 HTTP 429와 처리되지 않은 예외는 0회였다. delayed 3회와 skip 22회가 관측됐으므로
+  고정 시각 스케줄의 부분 실패·건너뛰기 상태를 계속 사용자에게 명시한다.

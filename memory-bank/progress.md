@@ -15,7 +15,7 @@
 | M6 — 관심 종목·포트폴리오           | 완료 | versioned localStorage, 관심 종목, 원화 평가, 저장·삭제 확인, E2E·시각 QA                    |
 | M7 — 과거 추정 가치·추천 백테스트   | 완료 | 공통 시작일, 과거 환율, 4개 추천안, 월별 리밸런싱, 복사·덮어쓰기 보호                        |
 | M8 — 신뢰성·접근성·디자인 완성      | 완료 | 진단 ID, 상태 8종, 키보드·200%·모바일·overflow·axe·최종 디자인 QA                            |
-| M9 — 부하·안정성·최종 수용 검증     | 완료 | 2초·5초 스모크, 1시간 안정성, 성능 목표와 AC-01~29를 검증함                                  |
+| M9 — 부하·안정성·최종 수용 검증     | 완료 | 2초·5초 스모크, 1시간·장중 전체 세션 안정성, 성능 목표와 AC-01~29를 검증함                   |
 
 ## M0 — 개발 전 검증과 결정
 
@@ -376,6 +376,12 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
   전체 HTTP 429와 처리되지 않은 예외는 0회였다.
 - 메모리: RSS 79.4MB → 188.2MB, 최대 200.5MB. heap 17.5MB → 29.6MB, 최대 71.7MB. 마지막 10분
   RSS는 약 2.4MB 감소해 실행 후반의 지속 상승은 관찰되지 않았다.
+- 장중 전체 세션 안정성: 2026-09-18 09:00:29~15:30:29 KST에 최대 구성과 2초 고정 주기로 6시간 30분을
+  완료했다. 총 46,778회 중 46,775회 성공했고 인기·관심·포트폴리오 그룹에서 일시 실패 1회씩과 연결
+  회복 1회씩을 기록했다. 전체 HTTP 429와 처리되지 않은 예외는 0회였고 delayed 3회, skip 22회였다.
+- 장중 세션 메모리: RSS 103.2MB → 202.0MB, 최대 223.0MB. heap 17.8MB → 34.1MB, 최대 73.9MB. RSS
+  최고점은 실행 초반에 나타났고 종료값이 최고점보다 낮아 실행 후반의 지속적인 단조 증가는 관찰되지
+  않았다. 단일 환경 측정이므로 공급원 SLA나 메모리 누수 부재를 보장하지 않는다.
 - 프로덕션 Chrome: 첫 화면 434.93ms, 검색 939.74ms, 필터 47.11ms, 정렬 15.05ms로 각각 5초/1초
   목표를 충족했다. 정렬은 외부 장기 수집과 분리한 계약 fixture로 클라이언트 반영 시간만 측정했다.
 
@@ -386,6 +392,7 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 | `pnpm provider:smoke`                                      | 통과: 2초 주기 60초, 네 그룹 delayed·skip 0      |
 | `pnpm provider:smoke:candidate`                            | 통과: 5초 주기 60초, 네 그룹 delayed·skip 0      |
 | `pnpm provider:stability`                                  | 통과: 1시간 완료, 429·처리되지 않은 예외 0       |
+| 장중 전체 세션 안정성 측정                                 | 통과: 6시간 30분 완료, 429·처리되지 않은 예외 0  |
 | `validate-performance.ts --base-url http://127.0.0.1:3100` | 통과: 첫 화면·검색·필터·정렬 목표 충족           |
 | `pnpm validate`                                            | 통과: 21개 파일 116개 테스트, 계층·순환 위반 0건 |
 | `pnpm test:e2e`                                            | 통과: 핵심 흐름·복구·접근성 5/5                  |
@@ -394,7 +401,8 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
 ### 구현·증거 경로
 
 - 수용 추적: `docs/acceptance-matrix.md`
-- 공급원 결과: `docs/validation/provider-smoke*.json`, `docs/validation/provider-stability.json`
+- 공급원 결과: `docs/validation/provider-smoke*.json`, `docs/validation/provider-stability.json`,
+  `docs/validation/provider-market-session-2026-09-18.json`
 - 성능 결과: `docs/validation/app-performance.json`
 - 상태·복구: `src/components/data-status/group-status-notice.tsx`, `src/app/api/market/groups/**`
 - 구독 동기화: `src/composition/browser-user-data.ts`, `src/app/api/market/subscriptions/route.ts`
@@ -406,5 +414,5 @@ fake clock으로 2초 정상 틱, 빈 그룹, 부분 성공, 성공 복구, 수�
    소유한다고 가정하지 말고 명시적 요청 계약으로 전달한다.
 3. 한국어 종목명 검색을 임의 영문 치환으로 구현하지 않는다. 신뢰 가능한 한국어 종목 마스터를 검증한 뒤
    PDD/ADR에 근거를 추가한다.
-4. `docs/validation/*`은 2026-09-16~17 단일 환경의 증거이며 공급원 SLA가 아니다. 외부 공개 전 데이터
+4. `docs/validation/*`은 2026-09-16~18 단일 환경의 증거이며 공급원 SLA가 아니다. 외부 공개 전 데이터
    라이선스와 정식 공급원, 장시간 관찰을 다시 검토한다.

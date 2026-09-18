@@ -1,11 +1,12 @@
 # Yahoo Finance 공급원 적합성 기록
 
-- 검증일: 2026-09-16~17 (Asia/Seoul)
+- 검증일: 2026-09-16~18 (Asia/Seoul)
 - 환경: Windows, Node.js 24.19.0, `yahoo-finance2` 4.0.2
 - 방법: `pnpm provider:probe`, `pnpm provider:smoke`, `pnpm provider:smoke:candidate`,
-  `pnpm provider:stability`
+  `pnpm provider:stability`, 장중 전체 세션 안정성 측정
 - 원본 결과: `docs/validation/provider-probe.json`, `docs/validation/provider-smoke.json`,
-  `docs/validation/provider-smoke-candidate.json`, `docs/validation/provider-stability.json`
+  `docs/validation/provider-smoke-candidate.json`, `docs/validation/provider-stability.json`,
+  `docs/validation/provider-market-session-2026-09-18.json`
 
 ## 심볼과 메타데이터
 
@@ -85,6 +86,19 @@ RSS는 79,380,480B에서 188,215,296B로 증가했고 최대 200,527,872B였다.
 감소해 지속적인 RSS 상승은 관찰되지 않았다. 단일 실행이므로 장기 SLA나 메모리 누수 부재를 보장하지
 않으며, 주요 지수의 timeout·복구 사례는 애플리케이션 상태 머신의 delayed/skip/recovery 경로가 필요한
 실측 근거로 유지한다.
+
+## 장중 전체 세션 안정성 측정
+
+2026-09-18 09:00:29~15:30:29 KST에 최대 구성으로 2초 고정 주기를 23,400초 실행했다. 네 그룹의 총
+46,778회 중 46,775회가 성공했다. 주요 지수는 11,696/11,696회 성공했고, 인기 종목·관심 종목·포트폴리오는
+각각 11,693/11,694회 성공했다. 세 그룹의 일시 실패는 각각 다음 회차에서 회복됐으며 전체 HTTP 429와
+처리되지 않은 예외는 0회였다. delayed는 총 3회, skip은 총 22회였다.
+
+평균/p95 응답 시간은 주요 지수 201.83/286.95ms, 인기 종목 207.14/291.55ms, 관심 종목
+225.83/307.02ms, 포트폴리오 369.50/456.55ms였다. RSS는 103,211,008B에서 202,018,816B로 끝났고
+최대 222,982,144B였다. heap은 17,759,176B에서 34,137,088B로 끝났고 최대 73,926,216B였다. RSS
+최고점은 실행 초반에 나타났고 종료값은 최고점보다 낮았다. 이 결과는 장중 한 세션의 로컬 관측이며
+공급원 SLA나 모든 환경에서의 메모리 누수 부재를 보장하지 않는다.
 
 ## 이용 제한
 

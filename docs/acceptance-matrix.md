@@ -1,6 +1,6 @@
 # Stock2 MVP 수용 조건 추적표
 
-- 검증일: 2026-09-17 (Asia/Seoul)
+- 검증일: 2026-09-18 (Asia/Seoul)
 - 환경: Windows, Node.js 24.19.0, pnpm 11.19.0, Chrome/Playwright
 - 범위: PDD v0.2.9의 AC-01~AC-29
 - 판정 원칙: 자동 테스트, 실공급원 측정 또는 명시된 후속 경계 중 하나 이상의 재현 가능한 증거가 있어야 통과로 판정한다.
@@ -29,7 +29,7 @@
 | AC-20 | 통과           | 저장소 한도 테스트와 시장·포트폴리오 UI의 한도·삭제 방법·신규 추가 차단 안내                  |
 | AC-21 | 통과           | 배치 부분 성공 보존, 성공/실패 배치 UI와 실스모크의 관심 종목 20개/2배치                      |
 | AC-22 | 통과           | 23초 중단 상태 머신, 그룹 retry/reset API와 그룹 재시도·새로고침 E2E                          |
-| AC-23 | 통과           | `provider-stability.json`: 3,600초·61개 메모리 표본·오류율/429/연결 회복·예외 계측            |
+| AC-23 | 통과           | 1시간 및 장중 6시간 30분 안정성 결과의 메모리·오류율·429·연결 회복·예외 계측                  |
 | AC-24 | 통과           | `market-dashboard.test.tsx`의 지수 최대 5년·개별 종목 최대 10년, 포트폴리오 최대 10년 UI      |
 | AC-25 | 통과           | `apply-config.test.ts`의 유효 설정 적용 및 runtime의 timeout/batch/limit 연결                 |
 | AC-26 | 통과           | `apply-config.test.ts`의 다섯 설정 기본값·최솟값·batch clamp 검증                             |
@@ -49,6 +49,7 @@
 | 기본 2초 실스모크         | `docs/validation/provider-smoke.json`                        |
 | 운영 후보 5초 실스모크    | `docs/validation/provider-smoke-candidate.json`              |
 | 1시간 안정성              | `docs/validation/provider-stability.json`                    |
+| 장중 전체 세션 안정성     | `docs/validation/provider-market-session-2026-09-18.json`    |
 | 프로덕션 성능             | `docs/validation/app-performance.json`                       |
 
 실공급원 결과는 해당 시점의 로컬 측정이며 Yahoo Finance의 SLA를 의미하지 않는다. 장 마감·장 재개가
